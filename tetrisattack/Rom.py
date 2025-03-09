@@ -6,6 +6,9 @@ import os
 
 import settings
 from worlds.Files import APProcedurePatch, APTokenMixin, APTokenTypes
+from .Logic import stage_clear_individual_clears_included, stage_clear_round_clears_included, \
+    stage_clear_individual_unlocks_included, stage_clear_round_gates_included, stage_clear_progressive_unlocks_included
+from .Options import StarterPack, StageClearMode
 
 if TYPE_CHECKING:
     from . import TetrisAttackWorld
@@ -14,6 +17,8 @@ USAHASH = "44bb94606356f1c0965e12bbc50866b3"
 
 ARCHIPELAGO_DATA = 0x100000
 GOALS_POSITION = ARCHIPELAGO_DATA + 0x000
+SCMODE = ARCHIPELAGO_DATA + 0x003
+DEATHLINKHINT = ARCHIPELAGO_DATA + 0x006
 SCROUND1CHECKS = ARCHIPELAGO_DATA + 0x020
 SCROUND2CHECKS = ARCHIPELAGO_DATA + 0x026
 SCROUND3CHECKS = ARCHIPELAGO_DATA + 0x02C
@@ -86,39 +91,55 @@ class TATKProcedurePatch(APProcedurePatch, APTokenMixin):
 def patch_rom(world: "TetrisAttackWorld", patch: TATKProcedurePatch) -> None:
     patch.write_file("tatk_basepatch.bsdiff4", pkgutil.get_data(__name__, "data/tatk_basepatch.bsdiff4"))
     patch.write_bytes(GOALS_POSITION, [0x1, 0x0, 0x0])
-    patch.write_bytes(SCROUND1CHECKS, [0x0, 0x0, 0x0, 0x0, 0x0, 0x1])
-    patch.write_bytes(SCROUND2CHECKS, [0x0, 0x0, 0x0, 0x0, 0x0, 0x1])
-    patch.write_bytes(SCROUND3CHECKS, [0x0, 0x0, 0x0, 0x0, 0x0, 0x1])
-    patch.write_bytes(SCROUND4CHECKS, [0x0, 0x0, 0x0, 0x0, 0x0, 0x1])
-    patch.write_bytes(SCROUND5CHECKS, [0x0, 0x0, 0x0, 0x0, 0x0, 0x1])
-    patch.write_bytes(SCROUND6CHECKS, [0x0, 0x0, 0x0, 0x0, 0x0, 0x1])
-    patch.write_bytes(SCLASTSTAGECHECKS, [0x0])
-    patch.write_bytes(SCSPECIALSTAGECOUNT, [0x0])
-    patch.write_bytes(VSSTAGECHECKS, [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0])
-    patch.write_bytes(VSCHARACTERCHECKS, [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0])
-    patch.write_bytes(PUZZLEW1CHECKS, [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0])
-    patch.write_bytes(PUZZLEW2CHECKS, [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0])
-    patch.write_bytes(PUZZLEW3CHECKS, [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0])
-    patch.write_bytes(PUZZLEW4CHECKS, [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0])
-    patch.write_bytes(PUZZLEW5CHECKS, [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0])
-    patch.write_bytes(PUZZLEW6CHECKS, [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0])
-    patch.write_bytes(PUZZLESW1CHECKS, [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0])
-    patch.write_bytes(PUZZLESW2CHECKS, [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0])
-    patch.write_bytes(PUZZLESW3CHECKS, [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0])
-    patch.write_bytes(PUZZLESW4CHECKS, [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0])
-    patch.write_bytes(PUZZLESW5CHECKS, [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0])
-    patch.write_bytes(PUZZLESW6CHECKS, [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0])
-    patch.write_bytes(INITIAL_UNLOCKS, [
-        0x1, 0x1, 0x1, 0x1, 0x1, world.options.starter_pack == 0,
-        0x1, 0x1, 0x1, 0x1, 0x1, world.options.starter_pack == 1,
-        0x1, 0x1, 0x1, 0x1, 0x1, world.options.starter_pack == 2,
-        0x1, 0x1, 0x1, 0x1, 0x1, world.options.starter_pack == 3,
-        0x1, 0x1, 0x1, 0x1, 0x1, world.options.starter_pack == 4,
-        0x1, 0x1, 0x1, 0x1, 0x1, world.options.starter_pack == 5,
-        0x0])
+    sc_mode = 0b00000
+    match world.options.stage_clear_mode:
+        case StageClearMode.option_incremental \
+             | StageClearMode.option_incremental_with_round_gate:
+            sc_mode = 0b00001
+        case StageClearMode.option_skippable \
+             | StageClearMode.option_skippable_with_round_gate:
+            sc_mode = 0b00011
+    if world.options.stage_clear_saves:
+        sc_mode |= 0b00100
+    if world.options.starter_pack != StarterPack.option_stage_clear_round_6:
+        sc_mode |= 0b10000
+    patch.write_byte(SCMODE, sc_mode)
+    patch.write_byte(DEATHLINKHINT, 1 if world.options.death_link else 0)
+    ic_inc = stage_clear_individual_clears_included(world)
+    rc_inc = stage_clear_round_clears_included(world)
+    for x in range(0, 6):
+        patch.write_bytes(SCROUND1CHECKS + x * 6, [ic_inc, ic_inc, ic_inc, ic_inc, ic_inc, rc_inc])
+    patch.write_byte(SCLASTSTAGECHECKS, 0b00)
+    patch.write_byte(SCSPECIALSTAGECOUNT, 0b00)
+    patch.write_bytes(VSSTAGECHECKS, [0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00])
+    patch.write_bytes(VSCHARACTERCHECKS, [0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00])
+    patch.write_bytes(PUZZLEW1CHECKS, [0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00])
+    patch.write_bytes(PUZZLEW2CHECKS, [0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00])
+    patch.write_bytes(PUZZLEW3CHECKS, [0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00])
+    patch.write_bytes(PUZZLEW4CHECKS, [0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00])
+    patch.write_bytes(PUZZLEW5CHECKS, [0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00])
+    patch.write_bytes(PUZZLEW6CHECKS, [0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00])
+    patch.write_bytes(PUZZLESW1CHECKS, [0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00])
+    patch.write_bytes(PUZZLESW2CHECKS, [0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00])
+    patch.write_bytes(PUZZLESW3CHECKS, [0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00])
+    patch.write_bytes(PUZZLESW4CHECKS, [0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00])
+    patch.write_bytes(PUZZLESW5CHECKS, [0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00])
+    patch.write_bytes(PUZZLESW6CHECKS, [0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00])
+    other_stages_already_unlocked = not (stage_clear_individual_unlocks_included(world)
+                                         or stage_clear_progressive_unlocks_included(world))
+    first_stage_already_unlocked = other_stages_already_unlocked
+    gate_already_unlocked = not stage_clear_round_gates_included(world)
+    for x in range(0, 6):
+        is_initial_round = (world.options.starter_pack == StarterPack.option_stage_clear_round_1 + x)
+        s1_unlock = first_stage_already_unlocked or is_initial_round
+        sx_unlock = other_stages_already_unlocked or is_initial_round
+        gate_unlocked = gate_already_unlocked or is_initial_round
+        patch.write_bytes(INITIAL_UNLOCKS + 6 * x, [
+            s1_unlock, sx_unlock, sx_unlock, sx_unlock, sx_unlock, gate_unlocked
+        ])
 
     from Utils import __version__
-    patch.name = bytearray(f'APTATK{__version__.replace(".", "")[0:3]}_{world.player}_{world.multiworld.seed:11}\0',
+    patch.name = bytearray(f'APTATK{__version__.replace(".", "")[0:3]}{world.player}{world.multiworld.seed:11}\0',
                            'utf8')[:21]
     patch.name.extend([0] * (21 - len(patch.name)))
     patch.write_bytes(0x007FC0, patch.name)
