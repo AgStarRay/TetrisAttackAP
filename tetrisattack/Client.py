@@ -241,7 +241,7 @@ class TetrisAttackSNIClient(SNIClient):
         else:  # Check for collected locations
             collected_loc = 0
             collection_bitmask = 0
-            for loc_id in ctx.locations_checked:
+            for loc_id in ctx.checked_locations:
                 # The multiple of 0x400 determines the bit to look at; if enough bits are set this way,
                 #   the game will stop displaying the AP sprite even if not completed locally
                 loc_obtained = sram_bytes[loc_id % SRAM_ARCHIPELAGO_REGION_END - SRAM_ARCHIPELAGO_REGION_OFFSET]
