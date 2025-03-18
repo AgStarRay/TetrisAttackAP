@@ -1,4 +1,4 @@
-﻿from Options import PerGameCommonOptions, DeathLink, Choice, Toggle, DefaultOnToggle
+﻿from Options import PerGameCommonOptions, DeathLink, Choice, Toggle, DefaultOnToggle, Range
 from dataclasses import dataclass
 
 
@@ -28,8 +28,8 @@ class AutoHints(DefaultOnToggle):
 
 
 class AddFiller(DefaultOnToggle):
-    """If enabled, the game will maximize the number of locations (aside from additional Special Stages) and add more filler items to the pool
-    Note that there are situations where filler is forced, otherwise the logic would be too tight and lead to unbeatable seeds"""
+    """If enabled, the game will maximize the number of locations (aside from additional Special Stages) and add more filler items to the pool.
+    Note that there are situations where filler is forced, otherwise the logic would be too tight and lead to unbeatable seeds."""
 
 
 class StageClearMode(Choice):
@@ -51,6 +51,29 @@ class StageClearSaves(DefaultOnToggle):
     """If enabled, Stage Clear will let you resume rounds at the first unchecked stage or the stage after the last cleared one, whichever is earlier"""
 
 
+class SpecialStageTraps(Range):
+    """Adds extra locations to certain Stage Clear stages such as Round 3 Clear, but as a consequence adds the Special Stage trap.
+    When tripped, you must either win or lose the Special Stage before you can continue."""
+    range_start = 0
+    range_end = 30
+    default = 1
+
+
+class SpecialStageHPMultiplier(Range):
+    """Changes Bowser's HP to this times 100 in the Special Stage traps. Default (vanilla) is 6 (x100)."""
+    range_start = 1
+    range_end = 100
+    default = 6
+
+
+class LastStageHPMultiplier(Range):
+    """Changes Bowser's HP to this times 100 at the Last Stage. Default (vanilla) is 6 (x100).
+    For reference, a x2 Chain does 50 damage while a x6 Chain does a total of 980 damage."""
+    range_start = 1
+    range_end = 100
+    default = 6
+
+
 @dataclass
 class TetrisAttackOptions(PerGameCommonOptions):
     starter_pack: StarterPack
@@ -59,4 +82,7 @@ class TetrisAttackOptions(PerGameCommonOptions):
     death_link: DeathLink
     stage_clear_mode: StageClearMode
     stage_clear_saves: StageClearSaves
+    special_stage_trap_count: SpecialStageTraps
     stage_clear_filler: AddFiller
+    special_stage_hp_multiplier: SpecialStageHPMultiplier
+    last_stage_hp_multiplier: LastStageHPMultiplier

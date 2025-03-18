@@ -151,3 +151,32 @@ def stage_clear_able_to_win(world: "TetrisAttackWorld", state):
     if world.options.starter_pack == StarterPack.option_stage_clear_round_6:
         return state.has("Stage Clear Last Stage", world.player)
     return stage_clear_round_completable(world, state, 6)
+
+
+def round_clear_has_special(round_index: int, trap_count: int):
+    match trap_count:
+        case 1:
+            if round_index == 3:
+                return True
+        case 2:
+            if round_index == 3 or round_index == 6:
+                return True
+        case 3:
+            if round_index == 2 or round_index == 4 or round_index == 6:
+                return True
+        case 4:
+            if round_index == 2 or round_index == 3 or round_index == 4 or round_index == 5:
+                return True
+        case 5:
+            if round_index != 6:
+                return True
+        case 6:
+            return True
+    return False
+
+def stage_clear_has_special(round_index: int, stage_index: int, trap_count: int):
+    if trap_count > 6:
+        before_clear = round((round_index * 5 + stage_index - 6) * trap_count / 30)
+        after_clear = round((round_index * 5 + stage_index - 5) * trap_count / 30)
+        return before_clear != after_clear
+    return False

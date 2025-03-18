@@ -33,29 +33,33 @@ RECEIVED_ITEM_ARG = SRAM_START + 0x0406
 RECEIVE_CHECK = SRAM_START + 0x0408
 DEATHLINK_EVENT = SRAM_START + 0x0448
 DEATHLINK_TRIGGER = SRAM_START + 0x040C
-LOCATION_STAGECLEARLASTSTAGE = SRAM_START + 0x0224
-LOCATION_PUZZLE6d10 = SRAM_START + 0x02BB
-LOCATION_SECRETPUZZLE6d10 = SRAM_START + 0x02F7
-LOCATION_VSEASYSTAGE10 = SRAM_START + 0x0249
-LOCATION_VSNORMALSTAGE10 = SRAM_START + 0x0255
-LOCATION_VSNORMALSTAGE11 = SRAM_START + 0x0256
-LOCATION_VSHARDSTAGE10 = SRAM_START + 0x0261
-LOCATION_VSHARDSTAGE11 = SRAM_START + 0x0262
-LOCATION_VSHARDSTAGE12 = SRAM_START + 0x0263
-LOCATION_VSVHARDSTAGE10 = SRAM_START + 0x026D
-LOCATION_VSVHARDSTAGE11 = SRAM_START + 0x026E
-LOCATION_VSVHARDSTAGE12 = SRAM_START + 0x026F
-LOCATION_VSVHARDNOCONT = SRAM_START + 0x0273
+STAGECLEARLASTSTAGE_COMPLETED = SRAM_START + location_table["Stage Clear Last Stage Clear"].code
+PUZZLE6D10_COMPLETED = SRAM_START + 0x02BB
+SECRETPUZZLE6D10_COMPLETED = SRAM_START + 0x02F7
+VSEASYSTAGE10_COMPLETED = SRAM_START + 0x0249
+VSNORMALSTAGE10_COMPLETED = SRAM_START + 0x0255
+VSNORMALSTAGE11_COMPLETED = SRAM_START + 0x0256
+VSHARDSTAGE10_COMPLETED = SRAM_START + 0x0261
+VSHARDSTAGE11_COMPLETED = SRAM_START + 0x0262
+VSHARDSTAGE12_COMPLETED = SRAM_START + 0x0263
+VSVHARDSTAGE10_COMPLETED = SRAM_START + 0x026D
+VSVHARDSTAGE11_COMPLETED = SRAM_START + 0x026E
+VSVHARDSTAGE12_COMPLETED = SRAM_START + 0x026F
+VSVHARDNOCONT_COMPLETED = SRAM_START + 0x0273
+SRAM_ARCHIPELAGO_REGION_OFFSET = 0x020
+SRAM_ARCHIPELAGO_REGION_END = 0x400
+SRAM_ARCHIPELAGO_REGION_LENGTH = SRAM_ARCHIPELAGO_REGION_END - SRAM_ARCHIPELAGO_REGION_OFFSET
 
 VALID_GAME_STATES = [0x01, 0x02, 0x03, 0x04, 0x05]
 
 ACTION_CODE_NOOP = 0
 ACTION_CODE_RECEIVED_ITEM = 2
 ACTION_CODE_LAST_STAGE = 3
-ACTION_CODE_COLLECT_LOCATION = 4
+ACTION_CODE_MARK_COMPLETE = 5
 
 STAGE_CLEAR_ROUND_6_CLEAR = SRAM_START + location_table["Stage Clear Round 6 Clear"].code
 STAGE_CLEAR_LAST_STAGE_UNLOCK = SRAM_START + item_table["Stage Clear Last Stage"].code
+STAGE_CLEAR_SPECIAL_STAGE_TRAP = SRAM_START + item_table["Stage Clear Special Stage Trap"].code
 
 
 class TetrisAttackSNIClient(SNIClient):
@@ -106,11 +110,11 @@ class TetrisAttackSNIClient(SNIClient):
             if all_goals is not None:
                 goals_met = True
                 if all_goals[0] != 0:
-                    sc_last_stage_clear = await snes_read(ctx, LOCATION_STAGECLEARLASTSTAGE, 0x1)
+                    sc_last_stage_clear = await snes_read(ctx, STAGECLEARLASTSTAGE_COMPLETED, 0x1)
                     if sc_last_stage_clear is None or sc_last_stage_clear[0] == 0:
                         goals_met = False
                     else:
-                        sc_last_stage_clear = await snes_read(ctx, LOCATION_STAGECLEARLASTSTAGE + 0x101, 0x1)
+                        sc_last_stage_clear = await snes_read(ctx, STAGECLEARLASTSTAGE_COMPLETED + 0x101, 0x1)
                         if sc_last_stage_clear is None or sc_last_stage_clear[0] == 0:
                             goals_met = False
                 if all_goals[1] != 0:
@@ -161,13 +165,17 @@ class TetrisAttackSNIClient(SNIClient):
         if received_item_count != receive_check:
             return
 
+        # Grab the entire Archipelago SRAM region
+        sram_bytes = await snes_read(ctx, SRAM_START + SRAM_ARCHIPELAGO_REGION_OFFSET, SRAM_ARCHIPELAGO_REGION_LENGTH)
+
         # Look through location checks
         new_checks = []
         for loc_id in ctx.missing_locations:
             if not loc_id in ctx.locations_checked:
                 # Locations that are separated by a multiple of 1 KiB are the same, meaning they give multiple items
-                loc_obtained = await snes_read(ctx, SRAM_START + loc_id % 0x400, 0x1)
-                if loc_obtained is not None and loc_obtained[0] != 0:
+                # The game fills up to bit 6 with the value 0x7F
+                loc_obtained = sram_bytes[loc_id % SRAM_ARCHIPELAGO_REGION_END - SRAM_ARCHIPELAGO_REGION_OFFSET]
+                if (loc_obtained & 0x40) != 0:
                     location = ctx.location_names.lookup_in_game(loc_id)
                     total_locations = len(ctx.missing_locations) + len(ctx.checked_locations)
                     new_checks.append(loc_id)
@@ -183,12 +191,12 @@ class TetrisAttackSNIClient(SNIClient):
         while received_item_count < len(ctx.items_received):
             item = ctx.items_received[received_item_count]
             received_item_count += 1
-            if item.item < 0x020:  # Progressive item
-                current_count = await get_current_progressive_count(ctx, item.item)
-                progressive_count = 0
-                for i in range(received_item_count):
-                    if ctx.items_received[i].item == item.item:
-                        progressive_count += 1
+            progressive_count = 0
+            for i in range(received_item_count):
+                if ctx.items_received[i].item == item.item:
+                    progressive_count += 1
+            if item.item < SRAM_ARCHIPELAGO_REGION_OFFSET:  # Progressive item
+                current_count = get_current_progressive_count(item.item, sram_bytes)
                 if current_count < progressive_count:
                     logging.info("Received %s #%d from %s (%s) (%d/%d in list)" % (
                         color(ctx.item_names.lookup_in_game(item.item), "red", "bold"),
@@ -212,15 +220,15 @@ class TetrisAttackSNIClient(SNIClient):
                         received_item_count,
                         len(ctx.items_received)))
             else:  # Unique item
-                already_obtained = await snes_read(ctx, SRAM_START + item.item % 0x400, 0x1)
-                if already_obtained[0] == 0:
+                already_obtained = sram_bytes[item.item % SRAM_ARCHIPELAGO_REGION_END - SRAM_ARCHIPELAGO_REGION_OFFSET]
+                if already_obtained < progressive_count:
                     logging.info("Received %s from %s (%s) (%d/%d in list)" % (
                         color(ctx.item_names.lookup_in_game(item.item), "red", "bold"),
                         color(ctx.player_names[item.player], "yellow"),
                         ctx.location_names.lookup_in_slot(item.location, item.player), received_item_count,
                         len(ctx.items_received)))
                     snes_buffered_write(ctx, RECEIVED_ITEM_ID, pack("H", item.item))
-                    snes_buffered_write(ctx, RECEIVED_ITEM_ARG, pack("H", 1))
+                    snes_buffered_write(ctx, RECEIVED_ITEM_ARG, pack("H", progressive_count))
                     action_code = ACTION_CODE_RECEIVED_ITEM
                     break
                 else:
@@ -230,19 +238,37 @@ class TetrisAttackSNIClient(SNIClient):
         if received_item_count > old_item_count:
             snes_buffered_write(ctx, RECEIVED_ITEM_ACTION, pack("H", action_code))
             snes_buffered_write(ctx, RECEIVED_ITEM_NUMBER, pack("H", received_item_count))
+        else:  # Check for collected locations
+            collected_loc = 0
+            collection_bitmask = 0
+            for loc_id in ctx.locations_checked:
+                # The multiple of 0x400 determines the bit to look at; if enough bits are set this way,
+                #   the game will stop displaying the AP sprite even if not completed locally
+                loc_obtained = sram_bytes[loc_id % SRAM_ARCHIPELAGO_REGION_END - SRAM_ARCHIPELAGO_REGION_OFFSET]
+                bitmask = 1 << (loc_id // SRAM_ARCHIPELAGO_REGION_END)
+                if (loc_obtained & bitmask) == 0:
+                    location = ctx.location_names.lookup_in_game(loc_id)
+                    snes_logger.info(f"Marking as collected ingame: {location}")
+                    collected_loc = loc_id % SRAM_ARCHIPELAGO_REGION_END
+                    collection_bitmask = bitmask
+                    break
+            if collected_loc != 0:
+                snes_buffered_write(ctx, RECEIVED_ITEM_ID, pack("H", collected_loc))
+                snes_buffered_write(ctx, RECEIVED_ITEM_ARG, pack("H", collection_bitmask))
+                snes_buffered_write(ctx, RECEIVED_ITEM_ACTION, pack("H", ACTION_CODE_MARK_COMPLETE))
+                snes_buffered_write(ctx, RECEIVE_CHECK, pack("H", 0xFFFF))
 
         await snes_flush_writes(ctx)
 
 
-async def get_current_progressive_count(ctx: "SNIContext", item_id) -> int:
-    from SNIClient import snes_read
+def get_current_progressive_count(item_id: int, sram_bytes: bytes) -> int:
     item_id_range = get_progressive_item_addr_range(item_id)
+    if item_id_range[1] <= item_id_range[0] + 1:
+        return sram_bytes[item_id_range[0] - SRAM_ARCHIPELAGO_REGION_OFFSET]
     current_count = 0
-    already_obtained = await snes_read(ctx, SRAM_START + item_id_range[0], item_id_range[1] - item_id_range[0])
-    if already_obtained is not None:
-        for i in range(len(already_obtained)):
-            if already_obtained[i] > 0:
-                current_count += 1
+    for i in range(item_id_range[0], item_id_range[1]):
+        if sram_bytes[i - SRAM_ARCHIPELAGO_REGION_OFFSET] > 0:
+            current_count += 1
     return current_count
 
 

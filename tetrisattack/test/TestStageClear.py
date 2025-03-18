@@ -36,8 +36,18 @@ class TestStageClearSkippableStages(TetrisAttackTestBase):
         "stage_clear_filler": 0
     }
 
+
 class TestStageClearSkippableStagesWithRoundGates(TetrisAttackTestBase):
     options = {
         "stage_clear_mode": StageClearMode.option_skippable_with_round_gate,
         "stage_clear_filler": 0
+    }
+
+
+class TestStageClearMaxFiller(TetrisAttackTestBase):
+    options = {
+        "starter_pack": StarterPack.option_stage_clear_round_6,
+        "stage_clear_mode": StageClearMode.option_whole_rounds,
+        "stage_clear_filler": 1,
+        "special_stage_traps": 30
     }

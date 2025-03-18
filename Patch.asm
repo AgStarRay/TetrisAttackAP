@@ -46,11 +46,11 @@ SRAM_StageClearRound4Furthest = $700005
 SRAM_StageClearRound5Furthest = $700006
 SRAM_StageClearRound6Furthest = $700007
 SRAM_StageClearSpecialStageCompletions = $700008
+SRAM_StageClearBowserDamage = $700009
 SRAM_SaveChecksumComplement = $70001C
 SRAM_SaveChecksum = $70001E
 SRAM_UnlocksRegionStart = $700020
-; 0-4 are individual stage unlocks, 5 is the round unlock
-; TODO: Rearrange to have 0 be the round gate and 1-5 be the stage unlocks
+; 0 is the round gate, 1-5 are individual stage unlocks
 SRAM_StageClearRound1Unlocks = $700020
 SRAM_StageClearRound2Unlocks = $700026
 SRAM_StageClearRound3Unlocks = $70002C
@@ -129,6 +129,8 @@ SRAM_PendingUnlocksPointer = $700420
 SRAM_PendingUnlockFramesLeft = $700422
 SRAM_LockSpriteValues = $700424
 SRAM_DeathlinkPendingEvent = $700448
+SRAM_SCCurrentHealthBar = $70044A
+SRAM_SCPreviousHealthBar = $70044C
 ; Regions
 SRAM_PendingUnlocks = $700500
 SRAM_End = $700800
@@ -148,6 +150,8 @@ org $A28000 : pad $A38000
 org $A38000 : pad $A48000
 
 ; New crash handler
+org $808000
+BRK
 org $80FFAC
 JML.L CODE_NewCrashHandler
 org $80FFE6
@@ -173,6 +177,19 @@ JML.L CODE_StateMachineLogic
 org $808200
 JSL CODE_SRAMHealthCheck
 BRA CODE_80820C
+
+; Change when Bowser turns red in the special stages
+org $829BDD
+JML.L CODE_SCBowserCustomColor
+
+; Change when you win in the special stages
+org $829D30
+JSL.L CODE_SCSpecialCustomWinCondition
+RTS
+CODE_82B574_JSR:
+JSR.W CODE_82B574
+RTL
+
 
 ; Redirect the title screen button check code in states 3 and 4
 org $8ABC4E
@@ -280,6 +297,11 @@ LDA.W #$001A
 ; Make the Stage Clear submenu allow selection after clearing a round
 org $83DEAB
 db $02,$02,$02
+; Make the Stage Clear submenu allow selection after the Special Stage
+org $83DEC2
+LDA.W #$0002
+org $83E044
+LDA.W #$0002
 ; Make the Vs mode go back to the 1Player Game menu
 org $83C1F7
 db $38
@@ -297,6 +319,14 @@ CODE_838E7D_JSR:
 
 ; TODO: Add new submenu for Vs.
 
+; Change the scale of the HP bar
+org $85AF96
+JML.L CODE_SCUpdateHPWithCustomIndex
+
+; Control how Bowser's HP bar fills up at the beginning
+org $87A7ED
+JML.L CODE_SCBowserFillHP
+
 ; Inject subroutine for Stage Clear win
 org $87C83F
 JSL.L CODE_OnStageClearWin
@@ -312,9 +342,17 @@ org $87E1E8
 JSL.L CODE_StageClearResultSummonNextStage
 RTS
 
+; Change what Bowser's damage starts off as
+org $87A8EF
+JSL.L CODE_SCStartSpecialStage
+
 ; Disable Stage Clear tampering with the stage selection before gameplay
 org $87A9F8
 RTS
+
+; Cap the damage inflicted to Bowser to 500
+org $89AD70
+JSL.L CODE_SCInflictDamageCapped
 
 
 ;;;;;;;;;;;;
@@ -333,21 +371,24 @@ DATA8_GoalVersus = $A08002 ; 1 = stage 10, 2 = stage 11, 3 = stage 12, 4 = stage
 ;         s = Skippable mode, allows skipping over locked stages, but all 5 stages are still needed for a Round Clear
 ;          i = Incremental mode, lets the player start without all the stages
 DATA8_StageClearFlags = $A08003
+DATA8_PuzzleFlags = $A08004
+DATA8_VersusFlags = $A08005
+;TODO: Also add an SRAM value which the player can toggle
+DATA8_DeathlinkHint = $A08006
 ; Checks are bitmasks, sum up all the 1's to get the total number of checks
 ; If the SRAM values are less than these, display the AP sprite
-; Stage Clear stage checks bitmask (0-4)
-;   i-----ps
-;   i = indefinite checks
-;         p = special stage; typically only 3-5 has this if round 3 doesn't
-;          s = stage clear check
-; Stage Clear round checks bitmask (5)
+; Stage Clear round checks bitmask (0)
 ;   il----pr
 ;   i = indefinite checks
 ;    l = locally cleared, used for save data
 ;         p = special stage; typically only round 3 has this
 ;          r = round clear check
-; TODO: Also add an SRAM value which the player can toggle
-DATA8_DeathlinkHint = $A08006
+; Stage Clear stage checks bitmask (1-5)
+;   il----ps
+;   i = indefinite checks
+;    l = locally cleared, used for save data
+;         p = special stage; typically only 3-5 has this if round 3 doesn't
+;          s = stage clear check
 DATA8_StageClearRound1Checks = $A08020
 DATA8_StageClearRound2Checks = $A08026
 DATA8_StageClearRound3Checks = $A0802C
@@ -371,6 +412,33 @@ DATA8_PuzzleSecretWorld4Checks = $A080C3
 DATA8_PuzzleSecretWorld5Checks = $A080CE
 DATA8_PuzzleSecretWorld6Checks = $A080D9
 DATA8_InitialUnlocks = $A08100 ; The values in SRAM are bitwise OR'd with this data
+DATA16_SCSpecialBowserHP = $A08300
+DATA16_SCSpecialBowserHPStage1 = $A08302
+DATA16_SCSpecialBowserHPStage2 = $A08304
+DATA16_SCSpecialBowserHPStage3 = $A08306
+DATA16_SCLastBowserHP = $A08308
+DATA16_SCLastBowserHPStage1 = $A0830A
+DATA16_SCLastBowserHPStage2 = $A0830C
+DATA16_SCLastBowserHPStage3 = $A0830E
+DATA16_SCSpecialBowserHealthBars = $A08310
+DATA16_SCSpecialBowserHealthBarAmount = $A08312
+DATA16_SCLastBowserHealthBars = $A08314
+DATA16_SCLastBowserHealthBarAmount = $A08316
+DATA16_SCLastBowserHealAmount = $A08318
+DATA16_SCHPBarColors = $A0831A
+;DATA16_??? = $A08330
+org DATA16_SCSpecialBowserHP
+dw 600
+org DATA16_SCLastBowserHP
+dw 600
+org DATA16_SCSpecialBowserHealthBarAmount
+dw 600
+org DATA16_SCLastBowserHealthBarAmount
+dw 600
+org DATA16_SCLastBowserHealAmount
+dw 10000
+org DATA16_SCHPBarColors
+dw $0434, $019F, $037B, $0380, $7FC0, $7CC0, $78EF, $781F, $7EFF, $7FFF, $4210
 ;incsrc "testsave.asm"
 
 org $A0F800
@@ -381,6 +449,14 @@ incbin "customgraphics.bin"
 ; Bank A1 = AP menu and protocol code
 ;;;;;;;;;;;;
 org $A18000
+
+DATA16_A1_StageClearUnlockOffsets:
+    dw SRAM_StageClearRound1Unlocks
+    dw SRAM_StageClearRound2Unlocks
+    dw SRAM_StageClearRound3Unlocks
+    dw SRAM_StageClearRound4Unlocks
+    dw SRAM_StageClearRound5Unlocks
+    dw SRAM_StageClearRound6Unlocks
 
 CODE_NewCrashHandler:
     REP #$30
@@ -522,11 +598,11 @@ CODE_StateMachineLogic:
     BNE .SkipGameplayLogic
         JSL.L CODE_ScanIncomingArchipelagoItems
         LDA.L SRAM_DeathlinkPendingEvent
-        BEQ .SkipDeathlinkEvent
+        BEQ .GoToStateMachine
         LDA.W WRAM7E_CurrentlyPaused
-        BNE .SkipDeathlinkEvent
+        BNE .GoToStateMachine
         LDA.W WRAM7E_ShouldPause
-        BNE .SkipDeathlinkEvent
+        BNE .GoToStateMachine
             LDA.W #$0005
             STA.W WRAM7E_GameState
             LDA.W #$0001
@@ -535,8 +611,13 @@ CODE_StateMachineLogic:
             LDA.W #$0000
             STA.L SRAM_DeathlinkPendingEvent
             STA.W WRAM7E_GameSubstate
-        .SkipDeathlinkEvent:
+        BRA .GoToStateMachine
     .SkipGameplayLogic:
+    LDA.W WRAM7E_GameState
+    CMP.W #$0005
+    BNE .GoToStateMachine
+        JSL.L CODE_ScanIncomingArchipelagoItems
+    .GoToStateMachine:
     PEA $8000
     PLB
     PLB
@@ -728,9 +809,16 @@ CODE_ArchipelagoStageClearMenu:
     GFX_LockSprite = $3ABB
     GFX_LockSpriteHighlighted = $3CBB
     GFX_APSprite = $36BC
+    GFX_StageClearSprite = $3CCB
     JSL.L CODE_SRAMValidation
     JSL.L CODE_ScanIncomingArchipelagoItems
     JSR.W CODE_SetLocalRoundClears
+    LDA.L SRAM_StageClearSpecialStageCompletions
+    CMP.L SRAM_StageClearReceivedSpecialStages
+    BCS .SkipSpecialStage
+        JSR.W CODE_TriggerSpecialStage
+        JML.L CODE_83E754
+    .SkipSpecialStage:
     STZ.W WRAM7E_StageClearStageIndex
     LDY.W WRAM7E_OAMAppendAddr
     LDX.W #$0000
@@ -739,7 +827,7 @@ CODE_ArchipelagoStageClearMenu:
         BCS CODE_MenuSCCustomGraphics_End
         LDA.L SRAM_StageClearRound1Unlocks,X
         AND.W #$00FF
-        BNE CODE_MenuSCSkipLockSprite
+        BNE .SkipLockSprite
             JSR.W CODE_MenuSCCalculateSpritePos
             STA.W WRAM7E_OAMBuffer,Y
             INY
@@ -755,15 +843,15 @@ CODE_ArchipelagoStageClearMenu:
             STA.W WRAM7E_OAMBuffer,Y
             INY
             INY
-            BRA CODE_MenuSCNextSlot
-        CODE_MenuSCSkipLockSprite:
+            BRA .NextSlot
+        .SkipLockSprite:
         LDA.L DATA8_StageClearRound1Checks,X
         AND.W #$00FF
         STA.L SRAM_CheckComparisonTemp
         LDA.L SRAM_StageClearRound1Clears,X
         AND.W #$00FF
         CMP.L SRAM_CheckComparisonTemp
-        BCS CODE_MenuSCNextSlot
+        BCS .SkipAPSprite
             JSR.W CODE_MenuSCCalculateSpritePos
             STA.W WRAM7E_OAMBuffer,Y
             INY
@@ -772,7 +860,22 @@ CODE_ArchipelagoStageClearMenu:
             STA.W WRAM7E_OAMBuffer,Y
             INY
             INY
-        CODE_MenuSCNextSlot:
+            BRA .NextSlot
+        .SkipAPSprite:
+        LDA.L SRAM_StageClearRound1Clears,X
+        BIT.W #$0040
+        BEQ .SkipClearSprite
+            JSR.W CODE_MenuSCCalculateSpritePos
+            STA.W WRAM7E_OAMBuffer,Y
+            INY
+            INY
+            LDA.W #GFX_StageClearSprite
+            STA.W WRAM7E_OAMBuffer,Y
+            INY
+            INY
+            BRA .NextSlot
+        .SkipClearSprite:
+        .NextSlot:
         INX
         BRA CODE_MenuSCCustomGraphicsLoop
     CODE_MenuSCCustomGraphics_End:
@@ -833,6 +936,10 @@ CODE_ArchipelagoStageClearMenu:
         STA.L $7E9969
         STA.L $7E997D
         JSL.L CODE_MenuSCPickFirstStage
+        ;TODO: Fix menu graphics
+        ;LDA.W WRAM7E_StageClearRoundIndex
+        ;DEC A
+        ;STA.W WRAM7E_StageClearRoundClears
         LDA.W #$0005
         STA.W WRAM83_GameSubstate
         STZ.W WRAM83_MenuProcedure
@@ -867,37 +974,33 @@ CODE_CheckIfRoundIsOpen:
     DEC A
     ASL A
     TAX
-    LDA.W DATA16_StageClearUnlockOffsets,X
+    LDA.W DATA16_A1_StageClearUnlockOffsets,X
     TAX
+    LDA.L $700000,X
+    AND #$00FF
+    BEQ .Failed
     LDA.L DATA8_StageClearFlags
     BIT.W #$0001
     BEQ .CheckIndividualStageUnlocks
         BIT.W #$0002
         BEQ .CheckIncrementalStageUnlocks
         .CheckSkippableStageUnlocks:
-            LDA.L $700005,X
-            AND #$00FF
-            BEQ .Failed
-            LDA.L $700000,X
+            LDA.L $700001,X
             BNE .Passed
-            LDA.L $700002,X
+            LDA.L $700003,X
             BNE .Passed
             LDA.L $700004,X
-            AND #$00FF
             BNE .Passed
             BRA .Failed
         .CheckIncrementalStageUnlocks:
-            LDA.L $700000,X
-            AND #$00FF
-            BEQ .Failed
-            LDA.L $700005,X
+            LDA.L $700001,X
             AND #$00FF
             BEQ .Failed
             BRA .Passed
     .CheckIndividualStageUnlocks:
-        LDY.W #$0006
+        LDY.W #$0005
         .Loop:
-            LDA.L $700000,X
+            LDA.L $700001,X
             AND #$00FF
             BEQ .Failed
             INX
@@ -920,61 +1023,43 @@ CODE_HighlightRoundLockSprites:
     DEC A
     ASL A
     TAX
+    LDA.W #$0001
+    STA.L SRAM_LockSpriteValues,X
     LDA.L DATA8_StageClearFlags
     BIT.W #$0002
     BNE .CanSkipFirstStage
         LDA.W #$0001
-        STA.L SRAM_LockSpriteValues,X
+        STA.L SRAM_LockSpriteValues+1,X
     .CanSkipFirstStage:
-    LDA.W #$0100
-    STA.L SRAM_LockSpriteValues+4,X
     LDA.L DATA8_StageClearFlags
     BIT.W #$0001
     BNE .SkipIndividualStageLocks
         LDA.W #$0101
-        STA.L SRAM_LockSpriteValues+1,X
-        STA.L SRAM_LockSpriteValues+3,X
+        STA.L SRAM_LockSpriteValues+2,X
+        STA.L SRAM_LockSpriteValues+4,X
     .SkipIndividualStageLocks:
     RTS
 DATA16_MenuSCSpritePositions:
-    dw $4047,$404F,$4057,$405F,$4067,$306F
-    dw $40BF,$40C7,$40CF,$40D7,$40DF,$30E7
-    dw $8047,$804F,$8057,$805F,$8067,$706F
-    dw $80BF,$80C7,$80CF,$80D7,$80DF,$70E7
-    dw $C047,$C04F,$C057,$C05F,$C067,$B06F
-    dw $C0BF,$C0C7,$C0CF,$C0D7,$C0DF,$B0E7
-DATA16_StageClearUnlockOffsets:
-    dw SRAM_StageClearRound1Unlocks
-    dw SRAM_StageClearRound2Unlocks
-    dw SRAM_StageClearRound3Unlocks
-    dw SRAM_StageClearRound4Unlocks
-    dw SRAM_StageClearRound5Unlocks
-    dw SRAM_StageClearRound6Unlocks
+    dw $306F,$4047,$404F,$4057,$405F,$4067
+    dw $30E7,$40BF,$40C7,$40CF,$40D7,$40DF
+    dw $706F,$8047,$804F,$8057,$805F,$8067
+    dw $70E7,$80BF,$80C7,$80CF,$80D7,$80DF
+    dw $B06F,$C047,$C04F,$C057,$C05F,$C067
+    dw $B0E7,$C0BF,$C0C7,$C0CF,$C0D7,$C0DF
+CODE_TriggerSpecialStage:
+    LDA.W #$0006
+    STA.W WRAM7E_GameSubstate
+    LDA.W #$0001
+    STA.W WRAM7E_StageClearSpecialIndex
+    LDA.L SRAM_StageClearSpecialStageCompletions
+    INC A
+    STA.W WRAM7E_StageClearStageIndex
+    RTS
 
 CODE_NewStageClearCustomSave:
     PHP
     REP #$30
     JSL.L CODE_SRAMValidation
-    ; LDA.W #$0101
-    ; STA.L SRAM_StageClearRound1Unlocks
-    ; STA.L SRAM_StageClearRound1Unlocks+2
-    ; STA.L SRAM_StageClearRound1Unlocks+4
-    ; STA.L SRAM_StageClearRound2Unlocks
-    ; STA.L SRAM_StageClearRound2Unlocks+2
-    ; STA.L SRAM_StageClearRound2Unlocks+4
-    ; STA.L SRAM_StageClearRound3Unlocks
-    ; STA.L SRAM_StageClearRound3Unlocks+2
-    ; STA.L SRAM_StageClearRound3Unlocks+4
-    ; STA.L SRAM_StageClearRound4Unlocks
-    ; STA.L SRAM_StageClearRound4Unlocks+2
-    ; STA.L SRAM_StageClearRound4Unlocks+4
-    ; STA.L SRAM_StageClearRound5Unlocks
-    ; STA.L SRAM_StageClearRound5Unlocks+2
-    ; STA.L SRAM_StageClearRound5Unlocks+4
-    ; STA.L SRAM_StageClearRound6Unlocks
-    ; STA.L SRAM_StageClearRound6Unlocks+2
-    ; STA.L SRAM_StageClearRound6Unlocks+4
-    ; JSL.L CODE_SRAMSave
     LDA.W #$0001
     STA.W $033C
     LDA.W #$0001
@@ -996,6 +1081,7 @@ CODE_NewStageClearCustomSave:
 
 CODE_SetLocalRoundClears:
     LDA.L SRAM_StageClearLastStageUnlock
+    AND.W #$00FF
     BEQ .NoLastStage
         LDA.W #$0006
         BRA .RoundClears
@@ -1037,18 +1123,27 @@ PTR16_ArchipelagoActions:
     dw CODE_ArchipelagoWriteReceivedItem
     dw CODE_ArchipelagoGrantedLastStage
     dw CODE_ArchipelagoORValue
+    dw CODE_ArchipelagoMarkComplete
+    dw CODE_ArchipelagoWriteReceivedCharacter
 CODE_ArchipelagoDoNothing:
     RTS
 ; Action Code 0003: play sound effect, set ID to arg, and prepare the reveal
 CODE_ArchipelagoGrantedLastStage:
     LDA.W #$0001
     STA.L SRAM_LastStageRevealFlag ; TODO: Use this flag to do a custom reveal
-    LDA.W #$00FB
+    LDA.W #$00F7
     STA.L WRAM7E_NewSoundEvent
     BRA CODE_ArchipelagoWriteValue
 ; Action Code 0002: play sound effect and set ID to arg
 CODE_ArchipelagoWriteReceivedItem:
-    LDA.W #$0021
+    LDA.W WRAM7E_GameState
+    CMP.W #$0003
+    BCC .MenuPopSound
+        LDA.W #$0005
+        BRA .PlaySound
+    .MenuPopSound:
+        LDA.W #$0021
+    .PlaySound:
     STA.L WRAM7E_NewSoundEvent
 ; Action Code 0001: set ID to arg
 CODE_ArchipelagoWriteValue:
@@ -1059,6 +1154,10 @@ CODE_ArchipelagoWriteValue:
     STA.L $700000,X
     REP #$20
     RTS
+; Action Code 0005: ORwise set ID to arg and play sound
+CODE_ArchipelagoMarkComplete:
+    LDA.W #$00F6
+    STA.L WRAM7E_NewSoundEvent
 ; Action Code 0004: ORwise set ID to arg
 CODE_ArchipelagoORValue:
     LDA.L SNI_ReceivedItemID
@@ -1069,11 +1168,34 @@ CODE_ArchipelagoORValue:
     STA.L $700000,X
     REP #$20
     RTS
+; Action Code 0006: play unique sound effect and set ID to arg
+CODE_ArchipelagoWriteReceivedCharacter:
+    LDA.W #$004C
+    STA.L WRAM7E_NewSoundEvent
+    BRA CODE_ArchipelagoWriteReceivedItem
+
+
 
 ;;;;;;;;;;;;
 ; Bank A2 = Stage Clear, Puzzle, and Vs injected subroutines
 ;;;;;;;;;;;;
 org $A28000
+
+DATA16_A2_StageClearUnlockOffsets:
+    dw SRAM_StageClearRound1Unlocks
+    dw SRAM_StageClearRound2Unlocks
+    dw SRAM_StageClearRound3Unlocks
+    dw SRAM_StageClearRound4Unlocks
+    dw SRAM_StageClearRound5Unlocks
+    dw SRAM_StageClearRound6Unlocks
+DATA16_A2_StageClearRoundClearOffsets:
+    dw SRAM_StageClearRound1Clears
+    dw SRAM_StageClearRound2Clears
+    dw SRAM_StageClearRound3Clears
+    dw SRAM_StageClearRound4Clears
+    dw SRAM_StageClearRound5Clears
+    dw SRAM_StageClearRound6Clears
+
 CODE_OnStageClearWin:
     PHP
     REP #$30
@@ -1105,11 +1227,10 @@ CODE_OnStageClearWin:
         DEC A
         ASL A
         TAX
-        LDA.L DATA16_StageClearRoundClearOffsets,X
+        LDA.L DATA16_A2_StageClearRoundClearOffsets,X
         PHA
         CLC
         ADC.W WRAM7E_StageClearStageIndex
-        DEC A
         TAX
         SEP #$20
         LDA.B #$7F
@@ -1117,12 +1238,9 @@ CODE_OnStageClearWin:
         STA.L $700101,X
         print "Round clear check at ",pc
         PLX
-        LDA.L $700005,X
-        BIT.B #$40 ; TODO: Change more checks to look at bit 6
+        LDA.L $700000,X
+        BIT.B #$40
         BNE .RoundAlreadyCleared
-            LDA.L $700000,X
-            BIT.B #$40
-            BEQ .NotCleared
             LDA.L $700001,X
             BIT.B #$40
             BEQ .NotCleared
@@ -1135,9 +1253,12 @@ CODE_OnStageClearWin:
             LDA.L $700004,X
             BIT.B #$40
             BEQ .NotCleared
+            LDA.L $700005,X
+            BIT.B #$40
+            BEQ .NotCleared
             LDA.B #$7F
-            STA.L $700005,X
-            STA.L $700106,X
+            STA.L $700000,X
+            STA.L $700101,X
             JSR.W CODE_LastStageUnlock
             LDA.B #$01
             BRA .EndRoundClearFlagging
@@ -1145,10 +1266,10 @@ CODE_OnStageClearWin:
             LDA.W WRAM7E_StageClearStageIndex
             CMP.B #$05
             BNE .NotCleared
-            LDA.B #$01
-            BRA .EndRoundClearFlagging
+                LDA.B #$01
+                BRA .EndRoundClearFlagging
         .NotCleared:
-        LDA.B #$00
+            LDA.B #$00
         .EndRoundClearFlagging:
         STA.W WRAM7E_RoundClearIndicator
         BEQ .NoBravoSound
@@ -1175,24 +1296,19 @@ CODE_LastStageUnlock:
     .NotStage6:
     .NoAutoUnlock:
     RTS
-DATA16_StageClearRoundClearOffsets:
-    dw SRAM_StageClearRound1Clears
-    dw SRAM_StageClearRound2Clears
-    dw SRAM_StageClearRound3Clears
-    dw SRAM_StageClearRound4Clears
-    dw SRAM_StageClearRound5Clears
-    dw SRAM_StageClearRound6Clears
 
 CODE_OnStageClearTopOut:
     LDA.W WRAM7E_StageClearSpecialIndex
-    BEQ .NormalStage
-        ; TODO: Add Special Stage message
-        LDA.W #DeathlinkCode_StageClearLastStage
-        BRA .ApplyTrigger
-    .NormalStage:
-        LDA.W #DeathlinkCode_StageClearNormalStage
-    .ApplyTrigger:
+    INC A
     STA.L SNI_DeathlinkTrigger
+    LDA.W WRAM7E_StageClearSpecialIndex
+    CMP.W #$0001
+    BNE .NotSpecialStage
+        LDA.L SRAM_StageClearSpecialStageCompletions
+        INC A
+        STA.L SRAM_StageClearSpecialStageCompletions
+        JSL.L CODE_SRAMSave
+    .NotSpecialStage:
     LDA.W #$0001
     STA.L $7E943A
     INC.W WRAM7E_GameSubstate
@@ -1213,7 +1329,13 @@ CODE_StageClearResultSummonNextStage:
         LDA.W #$0001
         BRA .SetEndModeIndicator
     .AdvanceToNextStage:
-        LDA.W #$0000
+        LDA.L SRAM_StageClearSpecialStageCompletions
+        CMP.L SRAM_StageClearReceivedSpecialStages
+        BCS .SkipSpecialStage
+            LDA.W #$0001
+            BRA .SetEndModeIndicator
+        .SkipSpecialStage:
+            LDA.W #$0000
     .SetEndModeIndicator:
     STA.L WRAM7E_EndModeIndicator
     INC.W WRAM7E_GameSubstate
@@ -1227,10 +1349,10 @@ CODE_MenuSCPickFirstStage:
     DEC A
     ASL A
     TAX
-    LDA.L DATA16_StageClearRoundClearOffsets,X
+    LDA.L DATA16_A2_StageClearRoundClearOffsets,X
     TAX
-    LDA.L $700005,X
-    AND.W #$00FF
+    LDA.L $700000,X
+    BIT.W #$0040
     BNE .ReplayingClearedRound
         JSR.W CODE_SkipIfClearedOrLockedStage
         JSR.W CODE_SkipIfClearedOrLockedStage
@@ -1251,7 +1373,7 @@ CODE_MenuSCPickFirstStage:
             CMP.W #$0006
             BCC .Done
                 LDA.W #ErrorCode_AttemptedToStartFullyLockedStage
-                STA.B $0008
+                STA.B $08
                 BRK
     .ReplayingClearedRound:
     .Done:
@@ -1270,15 +1392,14 @@ CODE_SkipIfClearedOrLockedStage:
     TXA
     ASL A
     TAX
-    LDA.L DATA16_StageClearRoundClearOffsets,X
+    LDA.L DATA16_A2_StageClearRoundClearOffsets,X
     TAX
-    LDA.L $700005,X
+    LDA.L $700000,X
     BIT.W #$0040
     BNE .RoundAlreadyCleared
         TXA
         CLC
         ADC.W WRAM7E_StageClearStageIndex
-        DEC A
         TAX
         LDA.L $700000,X
         BIT.W #$0040
@@ -1294,10 +1415,9 @@ CODE_SkipIfLockedStage:
     DEC A
     ASL A
     TAX
-    LDA.L DATA16_StageClearUnlockOffsets,X
+    LDA.L DATA16_A2_StageClearUnlockOffsets,X
     CLC
     ADC.W WRAM7E_StageClearStageIndex
-    DEC A
     TAX
     LDA.L $700000,X
     AND.W #$00FF
@@ -1312,6 +1432,241 @@ CODE_SkipIfLockedStage:
             STA.W WRAM7E_StageClearStageIndex
     .StageIsUnlocked:
     RTS
+
+CODE_SCSpecialCustomWinCondition:
+    LDA.W WRAM7E_StageClearSpecialIndex
+    CMP.W #$0002
+    BEQ .LastStage
+        LDA.L WRAM7E_BowserDamage
+        CMP.L DATA16_SCSpecialBowserHP
+        BCC .End
+        BRA .Victory
+    .LastStage:
+        LDA.L WRAM7E_BowserDamage
+        CMP.L DATA16_SCLastBowserHP
+        BCC .End
+    .Victory:
+        JSL.L CODE_82B574_JSR
+        STZ.W WRAM82_AdvanceIngameTimer
+        LDA.W #$0005
+        STA.W WRAM82_GameState
+        STZ.W WRAM82_GameSubstate
+        STZ.B WRAM00_GameFrames
+        STZ.B WRAM00_GameSeconds
+        JSL.L CODE_86D7D8
+    .End:
+    RTL
+
+CODE_SCUpdateHPWithCustomIndex:
+    REP #$30
+    LDA.W WRAM7E_StageClearSpecialIndex
+    CMP.W #$0002
+    BEQ .LastStage
+        LDA.L DATA16_SCSpecialBowserHealthBars
+        STA.L SRAM_SCCurrentHealthBar
+        LDA.L WRAM7E_BowserDamage
+        STA.B $14
+        CMP.L DATA16_SCSpecialBowserHP
+        BCS .EmptyBar
+        LDA.L DATA16_SCSpecialBowserHealthBarAmount
+        STA.B $1C
+        BRA .DisplayHealthBarAmount
+    .LastStage:
+        LDA.L DATA16_SCLastBowserHealthBars
+        STA.L SRAM_SCCurrentHealthBar
+        LDA.L WRAM7E_BowserDamage
+        STA.B $14
+        CMP.L DATA16_SCLastBowserHP
+        BCS .EmptyBar
+        LDA.L DATA16_SCLastBowserHealthBarAmount
+        STA.B $1C
+    .DisplayHealthBarAmount:
+        LDA.B $14
+        CMP.B $1C
+        BCC .CalculateBowserHPIndex
+            SEC
+            SBC.B $1C
+            STA.B $14
+            LDA.L SRAM_SCCurrentHealthBar
+            DEC A
+            STA.L SRAM_SCCurrentHealthBar
+            BPL .DisplayHealthBarAmount
+    .EmptyBar:
+        LDA.W #$0000
+        STA.L SRAM_SCCurrentHealthBar
+        LDA.W #$1A00
+        STA.L $7E2244
+        STA.L $7E2246
+        STA.L $7E2248
+        STA.L $7E224A
+        STA.L $7E224C
+        STA.L $7E224E
+        STA.L $7E2250
+        RTL
+    .CalculateBowserHPIndex:
+    LDA.L SRAM_SCCurrentHealthBar
+    CMP.L SRAM_SCPreviousHealthBar
+    BEQ .SkipHPColorUpdate
+        ASL A
+        TAX
+        LDA.L DATA16_SCHPBarColors,X
+        STA.L $7E86F6+$DE
+        LDA.L DATA16_SCHPBarColors+2,X
+        STA.L $7E86F6+$D2
+        PHB
+        PHK
+        PLB
+        LDY.W #DATA_TransferHPBarColors
+        JSL.L CODE_CreateCGRAMDMA
+        PLB
+        LDA.L SRAM_SCCurrentHealthBar
+    .SkipHPColorUpdate:
+    STA.L SRAM_SCPreviousHealthBar
+    LDA.W #$0038
+    STA.B $16
+    JSL.L CODE_WordMultiplication
+    LDA.B $18
+    STA.B $1A
+    JSL.L CODE_WordDivision
+    LDA.B $1A
+    STA.L WRAM7E_BowserHPIndex
+    JML.L CODE_85AFE6
+
+CODE_SCBowserCustomColor:
+    LDA.W WRAM7E_StageClearSpecialIndex
+    CMP.W #$0002
+    BEQ .LastStage
+        LDA.L DATA16_SCSpecialBowserHP
+        CMP.L WRAM7E_BowserDamage
+        BCC .FullRed
+        SEC
+        SBC.L WRAM7E_BowserDamage
+        CMP.L DATA16_SCSpecialBowserHPStage1
+        BCS .NotRed
+        CMP.L DATA16_SCSpecialBowserHPStage2
+        BCS .SomewhatRed
+        CMP.L DATA16_SCSpecialBowserHPStage3
+        BCS .MostlyRed
+        BRA .BlinkingRed
+    .LastStage:
+        LDA.L DATA16_SCLastBowserHP
+        CMP.L WRAM7E_BowserDamage
+        BCC .FullRed
+        SEC
+        SBC.L WRAM7E_BowserDamage
+        CMP.L DATA16_SCLastBowserHPStage1
+        BCS .NotRed
+        CMP.L DATA16_SCLastBowserHPStage2
+        BCS .SomewhatRed
+        CMP.L DATA16_SCLastBowserHPStage3
+        BCS .MostlyRed
+    .BlinkingRed:
+        LDA.L $7E5311
+        DEC A
+        BNE .SkipBlinkTimerReset
+            LDA.L $7E5313
+            EOR.W #$0001
+            STA.L $7E5313
+            LDA.W #$0008
+        .SkipBlinkTimerReset:
+        STA.L $7E5311
+        LDA.L $7E5313
+        BNE .MostlyRed
+    .FullRed:
+        LDA.W #$0003
+        JML.L CODE_829C29
+    .NotRed:
+        TDC
+        JML.L CODE_829C29
+    .SomewhatRed:
+        LDA.W #$0001
+        JML.L CODE_829C29
+    .MostlyRed:
+        LDA.W #$0002
+        JML.L CODE_829C29
+
+CODE_SCStartSpecialStage:
+    ;TODO: Add an option for the maximum amount Bowser can heal and save the current value to SRAM
+    LDA.W #$0000
+    STA.L WRAM7E_BowserDamage
+    RTL
+
+CODE_SCBowserFillHP:
+    PHB
+    PHK
+    PLB
+    LDY.W #DATA_TransferHPBarColors
+    JSL.L CODE_CreateCGRAMDMA
+    PLB
+    LDA.L SRAM_SCCurrentHealthBar
+    ASL A
+    TAX
+    LDA.L DATA16_SCHPBarColors,X
+    STA.L $7E86F6+$DE
+    LDA.L DATA16_SCHPBarColors+2,X
+    STA.L $7E86F6+$D2
+    LDA.W WRAM7E_StageClearSpecialIndex
+    CMP.W #$0002
+    BEQ .LastStage
+        LDA.L DATA16_SCSpecialBowserHealthBars
+        TAX
+        LDA.L WRAM7E_BowserHPIndex
+        BEQ .NextSubstate
+        ;CMP.W #$0020
+        ;BEQ .NextSubstate
+            CLC
+            SBC.L DATA16_SCSpecialBowserHealthBars
+            BPL .HPNotMaxed
+            BRA .BarIsMaxed
+    .LastStage:
+        LDA.L DATA16_SCLastBowserHealthBars
+        TAX
+        LDA.L WRAM7E_BowserHPIndex
+        BEQ .NextSubstate
+        ;CMP.W #$0020
+        ;BEQ .NextSubstate
+            CLC
+            SBC.L DATA16_SCLastBowserHealthBars
+            BPL .HPNotMaxed
+    .BarIsMaxed:
+        CLC
+        ADC #$0038
+        STA.L WRAM7E_BowserHPIndex
+        LDA.L SRAM_SCCurrentHealthBar
+        INC A
+        STA.L SRAM_SCCurrentHealthBar
+        TXA
+        CMP.L SRAM_SCCurrentHealthBar
+        BCC .HPIsMaxed
+        JML.L CODE_87A7FF
+    .HPIsMaxed:
+        STA.L SRAM_SCCurrentHealthBar
+        LDA.W #$0000
+    .HPNotMaxed:
+        STA.L WRAM7E_BowserHPIndex
+        JML.L CODE_87A7FF
+    .NextSubstate:
+        STZ.B WRAM00_GameFrames
+        INC.W WRAM87_GameSubstate
+        JML.L CODE_87A7FF
+
+DATA_TransferHPBarColors:
+    dl $7E87C8
+    dw $000E
+    db $69
+
+CODE_SCInflictDamageCapped:
+    LDA.L $7E5307
+    CMP.W #$01F4
+    BCC .AddDamage
+        LDA.W #$01F4
+    .AddDamage:
+    CLC
+    ADC.L WRAM7E_BowserDamage
+    STA.L WRAM7E_BowserDamage
+    LDA.W #$0001
+    STA.L $7E904E
+    RTL 
 
 ;;;;;;;;;;;;
 ; Bank A3 = miscellaneous
