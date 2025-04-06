@@ -11,11 +11,12 @@ from worlds.AutoWorld import World
 from .Logic import stage_clear_round_gates_included, stage_clear_progressive_unlocks_included, \
     stage_clear_individual_unlocks_included
 from .Options import TetrisAttackOptions, StarterPack  # the options we defined earlier
-from .Items import item_table, get_items, filler_item_names  # data used below to add items to the World
+from .Items import item_table, get_items, filler_item_names, \
+    get_starter_item_names  # data used below to add items to the World
 from .Locations import get_locations, location_table, TetrisAttackLocation  # same as above
 from .Regions import init_areas
 from .Rom import get_base_rom_path, patch_rom, TATKProcedurePatch, USAHASH
-from .Rules import set_stage_clear_round_clear_rules, set_stage_clear_individual_clear_rules, set_goal_rules
+from .Rules import set_stage_clear_rules, set_goal_rules, set_puzzle_rules
 from .Client import TetrisAttackSNIClient
 
 
@@ -46,7 +47,8 @@ class TetrisAttackWorld(World):
     topology_present = True  # show path to required location checks in spoiler
 
     item_name_to_id = {item: item_table[item].code for item in item_table if item_table[item].code is not None}
-    location_name_to_id = {location: location_table[location].code for location in location_table if location_table[location].code is not None}
+    location_name_to_id = {location: location_table[location].code for location in location_table if
+                           location_table[location].code is not None}
 
     # Items can be grouped using their names to allow easy checking if any item
     # from that group has been collected. Group names can also be used for !hint
@@ -61,19 +63,9 @@ class TetrisAttackWorld(World):
         super().__init__(multiworld, player)
 
     def generate_early(self) -> None:
-        if stage_clear_round_gates_included(self):
-            self.multiworld.push_precollected(
-                self.create_item(f"Stage Clear Round {self.options.starter_pack + 1} Gate"))
-        if stage_clear_progressive_unlocks_included(self):
-            for _ in range(5):
-                self.multiworld.push_precollected(
-                    self.create_item(f"Stage Clear Progressive Round {self.options.starter_pack + 1} Unlock"))
-        elif stage_clear_individual_unlocks_included(self):
-            self.multiworld.push_precollected(self.create_item(f"Stage Clear {self.options.starter_pack + 1}-1 Unlock"))
-            self.multiworld.push_precollected(self.create_item(f"Stage Clear {self.options.starter_pack + 1}-2 Unlock"))
-            self.multiworld.push_precollected(self.create_item(f"Stage Clear {self.options.starter_pack + 1}-3 Unlock"))
-            self.multiworld.push_precollected(self.create_item(f"Stage Clear {self.options.starter_pack + 1}-4 Unlock"))
-            self.multiworld.push_precollected(self.create_item(f"Stage Clear {self.options.starter_pack + 1}-5 Unlock"))
+        starter_item_names = get_starter_item_names(self)
+        for n in starter_item_names:
+            self.multiworld.push_precollected(self.create_item(n))
 
     def generate_output(self, output_directory: str) -> None:
         try:
@@ -137,6 +129,6 @@ class TetrisAttackWorld(World):
         return TetrisAttackItem(event, data.classification, None, self.player)
 
     def set_rules(self) -> None:
-        set_stage_clear_round_clear_rules(self)
-        set_stage_clear_individual_clear_rules(self)
+        set_stage_clear_rules(self)
+        set_puzzle_rules(self)
         set_goal_rules(self)

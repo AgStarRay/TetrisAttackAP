@@ -1,7 +1,7 @@
 ﻿from typing import TYPE_CHECKING
 
 from BaseClasses import CollectionState
-from .Options import StarterPack, StageClearMode
+from .Options import StarterPack, StageClearMode, PuzzleMode, PuzzleGoal, PuzzleInclusion
 
 if TYPE_CHECKING:
     from . import TetrisAttackWorld
@@ -66,6 +66,8 @@ def stage_clear_round_accessible(world: "TetrisAttackWorld", state, round_number
 
 
 def stage_clear_round_clears_included(world: "TetrisAttackWorld"):
+    if not world.options.stage_clear_goal and not world.options.stage_clear_inclusion:
+        return False
     if world.options.stage_clear_filler:
         return True
     match world.options.stage_clear_mode:
@@ -86,6 +88,8 @@ def stage_clear_round_clears_included(world: "TetrisAttackWorld"):
 
 
 def stage_clear_individual_clears_included(world: "TetrisAttackWorld"):
+    if not world.options.stage_clear_goal and not world.options.stage_clear_inclusion:
+        return False
     if world.options.stage_clear_filler:
         return True
     match world.options.stage_clear_mode:
@@ -103,6 +107,8 @@ def stage_clear_individual_clears_included(world: "TetrisAttackWorld"):
 
 
 def stage_clear_progressive_unlocks_included(world: "TetrisAttackWorld"):
+    if not world.options.stage_clear_goal and not world.options.stage_clear_inclusion:
+        return False
     match world.options.stage_clear_mode:
         case StageClearMode.option_whole_rounds \
              | StageClearMode.option_skippable_with_round_gate \
@@ -118,6 +124,8 @@ def stage_clear_progressive_unlocks_included(world: "TetrisAttackWorld"):
 
 
 def stage_clear_individual_unlocks_included(world: "TetrisAttackWorld"):
+    if not world.options.stage_clear_goal and not world.options.stage_clear_inclusion:
+        return False
     match world.options.stage_clear_mode:
         case StageClearMode.option_whole_rounds \
              | StageClearMode.option_individual_stages \
@@ -133,6 +141,8 @@ def stage_clear_individual_unlocks_included(world: "TetrisAttackWorld"):
 
 
 def stage_clear_round_gates_included(world: "TetrisAttackWorld"):
+    if not world.options.stage_clear_goal and not world.options.stage_clear_inclusion:
+        return False
     match world.options.stage_clear_mode:
         case StageClearMode.option_whole_rounds \
              | StageClearMode.option_incremental_with_round_gate \
@@ -174,9 +184,202 @@ def round_clear_has_special(round_index: int, trap_count: int):
             return True
     return False
 
+
 def stage_clear_has_special(round_index: int, stage_index: int, trap_count: int):
     if trap_count > 6:
         before_clear = round((round_index * 5 + stage_index - 6) * trap_count / 30)
         after_clear = round((round_index * 5 + stage_index - 5) * trap_count / 30)
         return before_clear != after_clear
     return False
+
+
+def puzzle_round_completable(world: "TetrisAttackWorld", state: CollectionState, level_number: int):
+    if not puzzle_level_accessible(world, state, level_number):
+        return False
+
+    match world.options.puzzle_mode:
+        case PuzzleMode.option_whole_levels:
+            return True
+        case PuzzleMode.option_individual_stages \
+             | PuzzleMode.option_incremental \
+             | PuzzleMode.option_incremental_with_level_gate:
+            return state.has(f"Puzzle Progressive Level {level_number} Unlock", world.player, 10)
+        case PuzzleMode.option_skippable \
+             | PuzzleMode.option_skippable_with_level_gate:
+            return (state.has(f"Puzzle {level_number}-01 Unlock", world.player)
+                    and state.has(f"Puzzle {level_number}-02 Unlock", world.player)
+                    and state.has(f"Puzzle {level_number}-03 Unlock", world.player)
+                    and state.has(f"Puzzle {level_number}-04 Unlock", world.player)
+                    and state.has(f"Puzzle {level_number}-05 Unlock", world.player)
+                    and state.has(f"Puzzle {level_number}-06 Unlock", world.player)
+                    and state.has(f"Puzzle {level_number}-07 Unlock", world.player)
+                    and state.has(f"Puzzle {level_number}-08 Unlock", world.player)
+                    and state.has(f"Puzzle {level_number}-09 Unlock", world.player)
+                    and state.has(f"Puzzle {level_number}-10 Unlock", world.player))
+        case _:
+            raise Exception(
+                f"Cannot determine round completion from Stage Clear mode {world.options.puzzle_mode}")
+
+
+def puzzle_stage_completable(world: "TetrisAttackWorld", state, level_number: int, stage_number: int):
+    if not puzzle_level_accessible(world, state, level_number):
+        return False
+
+    match world.options.puzzle_mode:
+        case PuzzleMode.option_whole_levels \
+             | PuzzleMode.option_individual_stages:
+            return True
+        case PuzzleMode.option_incremental \
+             | PuzzleMode.option_incremental_with_level_gate:
+            return state.has(f"Puzzle Progressive Level {level_number} Unlock", world.player, stage_number)
+        case PuzzleMode.option_skippable \
+             | PuzzleMode.option_skippable_with_level_gate:
+            if stage_number >= 10:
+                return state.has(f"Puzzle {level_number}-10 Unlock", world.player)
+            return state.has(f"Puzzle {level_number}-0{stage_number} Unlock", world.player)
+        case _:
+            raise Exception(
+                f"Cannot determine stage completion from Puzzle mode {world.options.puzzle_mode}")
+
+
+def puzzle_level_accessible(world: "TetrisAttackWorld", state, round_number: int):
+    match world.options.puzzle_mode:
+        case PuzzleMode.option_whole_levels \
+             | PuzzleMode.option_skippable_with_level_gate \
+             | PuzzleMode.option_incremental_with_level_gate:
+            return state.has(f"Puzzle Level {round_number} Gate", world.player)
+        case PuzzleMode.option_individual_stages:
+            return state.has(f"Puzzle Progressive Level {round_number} Unlock", world.player, 10)
+        case PuzzleMode.option_incremental \
+             | PuzzleMode.option_skippable:
+            return True
+        case _:
+            raise Exception(
+                f"Cannot determine round accessibility from Puzzle mode {world.options.puzzle_mode}")
+
+
+def puzzle_round_clears_included(world: "TetrisAttackWorld"):
+    if world.options.puzzle_goal == PuzzleGoal.option_no_puzzle and world.options.puzzle_inclusion == PuzzleInclusion.option_no_puzzle:
+        return False
+    if world.options.puzzle_filler:
+        return True
+    match world.options.puzzle_mode:
+        case PuzzleMode.option_whole_levels \
+             | PuzzleMode.option_skippable_with_level_gate \
+             | PuzzleMode.option_incremental_with_level_gate:
+            return True
+        case PuzzleMode.option_individual_stages:
+            # Due to branching logic in the fill stage, not adding filler leads to unbeatable seeds
+            # TODO: Check for other filler options before forcing round clear locations, or find a way to fill the locations smarter
+            return True
+        case PuzzleMode.option_incremental \
+             | PuzzleMode.option_skippable:
+            return False
+        case _:
+            raise Exception(
+                f"Cannot determine round clear inclusions from Puzzle mode {world.options.puzzle_mode}")
+
+
+def puzzle_individual_clears_included(world: "TetrisAttackWorld"):
+    if world.options.puzzle_goal == PuzzleGoal.option_no_puzzle and world.options.puzzle_inclusion == PuzzleInclusion.option_no_puzzle:
+        return False
+    if world.options.puzzle_filler:
+        return True
+    match world.options.puzzle_mode:
+        case PuzzleMode.option_whole_levels:
+            return False
+        case PuzzleMode.option_individual_stages \
+             | PuzzleMode.option_incremental \
+             | PuzzleMode.option_incremental_with_level_gate \
+             | PuzzleMode.option_skippable_with_level_gate \
+             | PuzzleMode.option_skippable:
+            return True
+        case _:
+            raise Exception(
+                f"Cannot determine individual clear inclusions from Puzzle mode {world.options.puzzle_mode}")
+
+
+def puzzle_progressive_unlocks_included(world: "TetrisAttackWorld"):
+    if world.options.puzzle_goal == PuzzleGoal.option_no_puzzle and world.options.puzzle_inclusion == PuzzleInclusion.option_no_puzzle:
+        return False
+    match world.options.puzzle_mode:
+        case PuzzleMode.option_whole_levels \
+             | PuzzleMode.option_skippable_with_level_gate \
+             | PuzzleMode.option_skippable:
+            return False
+        case PuzzleMode.option_individual_stages \
+             | PuzzleMode.option_incremental \
+             | PuzzleMode.option_incremental_with_level_gate:
+            return True
+        case _:
+            raise Exception(
+                f"Cannot determine progressive unlock inclusions from Puzzle mode {world.options.puzzle_mode}")
+
+
+def puzzle_individual_unlocks_included(world: "TetrisAttackWorld"):
+    if world.options.puzzle_goal == PuzzleGoal.option_no_puzzle and world.options.puzzle_inclusion == PuzzleInclusion.option_no_puzzle:
+        return False
+    match world.options.puzzle_mode:
+        case PuzzleMode.option_whole_levels \
+             | PuzzleMode.option_individual_stages \
+             | PuzzleMode.option_incremental \
+             | PuzzleMode.option_incremental_with_level_gate:
+            return False
+        case PuzzleMode.option_skippable_with_level_gate \
+             | PuzzleMode.option_skippable:
+            return True
+        case _:
+            raise Exception(
+                f"Cannot determine individual unlock inclusions from Puzzle mode {world.options.puzzle_mode}")
+
+
+def puzzle_level_gates_included(world: "TetrisAttackWorld"):
+    if world.options.puzzle_goal == PuzzleGoal.option_no_puzzle and world.options.puzzle_inclusion == PuzzleInclusion.option_no_puzzle:
+        return False
+    match world.options.puzzle_mode:
+        case PuzzleMode.option_whole_levels \
+             | PuzzleMode.option_incremental_with_level_gate \
+             | PuzzleMode.option_skippable_with_level_gate:
+            return True
+        case PuzzleMode.option_individual_stages \
+             | PuzzleMode.option_incremental \
+             | PuzzleMode.option_skippable:
+            return False
+        case _:
+            raise Exception(
+                f"Cannot determine level gate inclusions from Puzzle mode {world.options.puzzle_mode}")
+
+
+def puzzle_able_to_win(world: "TetrisAttackWorld", state):
+    return puzzle_round_completable(world, state, 6)
+
+
+def goal_locations_included(world: "TetrisAttackWorld"):
+    mode_count = 0
+    if world.options.stage_clear_goal or world.options.stage_clear_inclusion:
+        mode_count += 1
+    if world.options.puzzle_goal != PuzzleGoal.option_no_puzzle or world.options.puzzle_inclusion != PuzzleInclusion.option_no_puzzle:
+        mode_count += 1
+    return mode_count > 1
+
+
+def able_to_win(world: "TetrisAttackWorld", state):
+    if world.options.stage_clear_goal and not stage_clear_able_to_win(world, state):
+        return False
+    if world.options.puzzle_goal != PuzzleGoal.option_no_puzzle and not puzzle_able_to_win(world, state):
+        return False
+    return True
+
+def get_starting_sc_round(world: "TetrisAttackWorld"):
+    include_puzzle = world.options.puzzle_goal != PuzzleGoal.option_no_puzzle or world.options.puzzle_inclusion != PuzzleInclusion.option_no_puzzle
+    starting_sc_round = world.options.starter_pack + 1
+    if starting_sc_round > 6 and not include_puzzle:
+        starting_sc_round = 1
+    return starting_sc_round
+
+def get_starting_puzzle_level(world: "TetrisAttackWorld"):
+    include_stage_clear = world.options.stage_clear_goal or world.options.stage_clear_inclusion
+    starting_puzzle_level = world.options.starter_pack + 1 - StarterPack.option_puzzle_level_1
+    if starting_puzzle_level < 1 and not include_stage_clear:
+        starting_puzzle_level = 1
+    return starting_puzzle_level

@@ -34,8 +34,8 @@ RECEIVE_CHECK = SRAM_START + 0x0408
 DEATHLINK_EVENT = SRAM_START + 0x0448
 DEATHLINK_TRIGGER = SRAM_START + 0x040C
 STAGECLEARLASTSTAGE_COMPLETED = SRAM_START + location_table["Stage Clear Last Stage Clear"].code
-PUZZLE6D10_COMPLETED = SRAM_START + 0x02BB
-SECRETPUZZLE6D10_COMPLETED = SRAM_START + 0x02F7
+PUZZLEL6_COMPLETED = SRAM_START + location_table["Puzzle Round 6 Clear"].code
+SECRETPUZZLEL6_COMPLETED = SRAM_START + location_table["Secret Puzzle Round 6 Clear"].code
 VSEASYSTAGE10_COMPLETED = SRAM_START + 0x0249
 VSNORMALSTAGE10_COMPLETED = SRAM_START + 0x0255
 VSNORMALSTAGE11_COMPLETED = SRAM_START + 0x0256
@@ -46,9 +46,9 @@ VSVHARDSTAGE10_COMPLETED = SRAM_START + 0x026D
 VSVHARDSTAGE11_COMPLETED = SRAM_START + 0x026E
 VSVHARDSTAGE12_COMPLETED = SRAM_START + 0x026F
 VSVHARDNOCONT_COMPLETED = SRAM_START + 0x0273
-SRAM_ARCHIPELAGO_REGION_OFFSET = 0x020
-SRAM_ARCHIPELAGO_REGION_END = 0x400
-SRAM_ARCHIPELAGO_REGION_LENGTH = SRAM_ARCHIPELAGO_REGION_END - SRAM_ARCHIPELAGO_REGION_OFFSET
+SRAM_AP_REGION_OFFSET = 0x020
+SRAM_AP_REGION_END = 0x400
+SRAM_AP_REGION_LENGTH = SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET
 
 VALID_GAME_STATES = [0x01, 0x02, 0x03, 0x04, 0x05]
 
@@ -104,29 +104,6 @@ class TetrisAttackSNIClient(SNIClient):
             return
 
         # Initial conditions are good, let's interact
-        if not ctx.finished_game:
-            all_goals = await snes_read(ctx, GOALS_POSITION, 0x3)
-            goals_met = False
-            if all_goals is not None:
-                goals_met = True
-                if all_goals[0] != 0:
-                    sc_last_stage_clear = await snes_read(ctx, STAGECLEARLASTSTAGE_COMPLETED, 0x1)
-                    if sc_last_stage_clear is None or sc_last_stage_clear[0] == 0:
-                        goals_met = False
-                    else:
-                        sc_last_stage_clear = await snes_read(ctx, STAGECLEARLASTSTAGE_COMPLETED + 0x101, 0x1)
-                        if sc_last_stage_clear is None or sc_last_stage_clear[0] == 0:
-                            goals_met = False
-                if all_goals[1] != 0:
-                    # TODO: Implement Puzzle goal
-                    goals_met = False
-                if all_goals[2] != 0:
-                    # TODO: Implement Vs goal
-                    goals_met = False
-            if goals_met:
-                await ctx.send_msgs([{"cmd": "StatusUpdate", "status": ClientStatus.CLIENT_GOAL}])
-                ctx.finished_game = True
-
         if "Deathlink" not in ctx.tags:
             deathlink_hint = await snes_read(ctx, DEATHLINKHINT, 0x1)
             if deathlink_hint is not None and deathlink_hint[0] != 0:
@@ -166,7 +143,48 @@ class TetrisAttackSNIClient(SNIClient):
             return
 
         # Grab the entire Archipelago SRAM region
-        sram_bytes = await snes_read(ctx, SRAM_START + SRAM_ARCHIPELAGO_REGION_OFFSET, SRAM_ARCHIPELAGO_REGION_LENGTH)
+        sram_bytes = await snes_read(ctx, SRAM_START + SRAM_AP_REGION_OFFSET, SRAM_AP_REGION_LENGTH)
+
+        # Look through goal checks
+        if not ctx.finished_game:
+            all_goals = await snes_read(ctx, GOALS_POSITION, 0x3)
+            goals_met = False
+            if all_goals is not None:
+                goals_met = True
+                if all_goals[0] != 0:
+                    sc_last_stage_clear = sram_bytes[
+                        STAGECLEARLASTSTAGE_COMPLETED % SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET]
+                    if sc_last_stage_clear is None or sc_last_stage_clear == 0:
+                        goals_met = False
+                    else:
+                        sc_last_stage_clear = sram_bytes[
+                            (STAGECLEARLASTSTAGE_COMPLETED + 0x101) % SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET]
+                        if sc_last_stage_clear is None or sc_last_stage_clear == 0:
+                            goals_met = False
+                if (all_goals[1] & 1) != 0:
+                    pz_6_10_clear = sram_bytes[PUZZLEL6_COMPLETED % SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET]
+                    if pz_6_10_clear is None or pz_6_10_clear == 0:
+                        goals_met = False
+                    else:
+                        pz_6_10_clear = sram_bytes[
+                            (PUZZLEL6_COMPLETED + 0x101) % SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET]
+                        if pz_6_10_clear is None or pz_6_10_clear == 0:
+                            goals_met = False
+                if (all_goals[1] & 2) != 0:
+                    pz_s_6_10_clear = sram_bytes[SECRETPUZZLEL6_COMPLETED % SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET]
+                    if pz_s_6_10_clear is None or pz_s_6_10_clear == 0:
+                        goals_met = False
+                    else:
+                        pz_s_6_10_clear = sram_bytes[
+                            (SECRETPUZZLEL6_COMPLETED + 0x101) % SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET]
+                        if pz_s_6_10_clear is None or pz_s_6_10_clear == 0:
+                            goals_met = False
+                if all_goals[2] != 0:
+                    # TODO: Implement Vs goal
+                    goals_met = False
+            if goals_met:
+                await ctx.send_msgs([{"cmd": "StatusUpdate", "status": ClientStatus.CLIENT_GOAL}])
+                ctx.finished_game = True
 
         # Look through location checks
         new_checks = []
@@ -174,7 +192,7 @@ class TetrisAttackSNIClient(SNIClient):
             if not loc_id in ctx.locations_checked:
                 # Locations that are separated by a multiple of 1 KiB are the same, meaning they give multiple items
                 # The game fills up to bit 6 with the value 0x7F
-                loc_obtained = sram_bytes[loc_id % SRAM_ARCHIPELAGO_REGION_END - SRAM_ARCHIPELAGO_REGION_OFFSET]
+                loc_obtained = sram_bytes[loc_id % SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET]
                 if (loc_obtained & 0x40) != 0:
                     location = ctx.location_names.lookup_in_game(loc_id)
                     total_locations = len(ctx.missing_locations) + len(ctx.checked_locations)
@@ -195,7 +213,7 @@ class TetrisAttackSNIClient(SNIClient):
             for i in range(received_item_count):
                 if ctx.items_received[i].item == item.item:
                     progressive_count += 1
-            if item.item < SRAM_ARCHIPELAGO_REGION_OFFSET:  # Progressive item
+            if item.item < SRAM_AP_REGION_OFFSET:  # Progressive item
                 current_count = get_current_progressive_count(item.item, sram_bytes)
                 if current_count < progressive_count:
                     logging.info("Received %s #%d from %s (%s) (%d/%d in list)" % (
@@ -220,7 +238,7 @@ class TetrisAttackSNIClient(SNIClient):
                         received_item_count,
                         len(ctx.items_received)))
             else:  # Unique item
-                already_obtained = sram_bytes[item.item % SRAM_ARCHIPELAGO_REGION_END - SRAM_ARCHIPELAGO_REGION_OFFSET]
+                already_obtained = sram_bytes[item.item % SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET]
                 if already_obtained < progressive_count:
                     logging.info("Received %s from %s (%s) (%d/%d in list)" % (
                         color(ctx.item_names.lookup_in_game(item.item), "red", "bold"),
@@ -244,12 +262,12 @@ class TetrisAttackSNIClient(SNIClient):
             for loc_id in ctx.checked_locations:
                 # The multiple of 0x400 determines the bit to look at; if enough bits are set this way,
                 #   the game will stop displaying the AP sprite even if not completed locally
-                loc_obtained = sram_bytes[loc_id % SRAM_ARCHIPELAGO_REGION_END - SRAM_ARCHIPELAGO_REGION_OFFSET]
-                bitmask = 1 << (loc_id // SRAM_ARCHIPELAGO_REGION_END)
+                loc_obtained = sram_bytes[loc_id % SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET]
+                bitmask = 1 << (loc_id // SRAM_AP_REGION_END)
                 if (loc_obtained & bitmask) == 0:
                     location = ctx.location_names.lookup_in_game(loc_id)
                     snes_logger.info(f"Marking as collected ingame: {location}")
-                    collected_loc = loc_id % SRAM_ARCHIPELAGO_REGION_END
+                    collected_loc = loc_id % SRAM_AP_REGION_END
                     collection_bitmask = bitmask
                     break
             if collected_loc != 0:
@@ -264,10 +282,10 @@ class TetrisAttackSNIClient(SNIClient):
 def get_current_progressive_count(item_id: int, sram_bytes: bytes) -> int:
     item_id_range = get_progressive_item_addr_range(item_id)
     if item_id_range[1] <= item_id_range[0] + 1:
-        return sram_bytes[item_id_range[0] - SRAM_ARCHIPELAGO_REGION_OFFSET]
+        return sram_bytes[item_id_range[0] - SRAM_AP_REGION_OFFSET]
     current_count = 0
     for i in range(item_id_range[0], item_id_range[1]):
-        if sram_bytes[i - SRAM_ARCHIPELAGO_REGION_OFFSET] > 0:
+        if sram_bytes[i - SRAM_AP_REGION_OFFSET] > 0:
             current_count += 1
     return current_count
 
