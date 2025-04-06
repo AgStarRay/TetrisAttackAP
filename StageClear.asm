@@ -194,6 +194,7 @@ CODE_SkipIfClearedOrLockedStage:
     BIT.W #%0100
     BEQ .StageIsNotCleared
     LDA.W WRAM7E_StageClearRoundIndex
+    DEC A
     ASL A
     TAX
     LDA.L DATA16_A2_StageClearRoundClearOffsets,X
