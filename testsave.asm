@@ -7,7 +7,7 @@ db $00
 org DATA8_StageClearFlags
 db %00111
 org DATA8_PuzzleFlags
-db %11
+db %1101
 org DATA8_VersusFlags
 db %00000
 org DATA8_StageClearRound1Checks

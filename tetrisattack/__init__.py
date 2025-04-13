@@ -9,8 +9,9 @@ import threading
 from BaseClasses import Region, Location, Entrance, Item, ItemClassification, MultiWorld
 from worlds.AutoWorld import World
 from .Logic import stage_clear_round_gates_included, stage_clear_progressive_unlocks_included, \
-    stage_clear_individual_unlocks_included
-from .Options import TetrisAttackOptions, StarterPack  # the options we defined earlier
+    stage_clear_individual_unlocks_included, get_starting_puzzle_level
+from .Options import TetrisAttackOptions, StarterPack, PuzzleGoal, PuzzleInclusion, \
+    PuzzleMode  # the options we defined earlier
 from .Items import item_table, get_items, filler_item_names, \
     get_starter_item_names  # data used below to add items to the World
 from .Locations import get_locations, location_table, TetrisAttackLocation  # same as above
@@ -119,6 +120,90 @@ class TetrisAttackWorld(World):
 
     def get_filler_item_name(self) -> str:
         return self.multiworld.random.choice(filler_item_names)
+
+    def fill_hook(self,
+                  progitempool: List["Item"],
+                  usefulitempool: List["Item"],
+                  filleritempool: List["Item"],
+                  fill_locations: List["Location"]) -> None:
+        # This is mainly to make some tests pass more often
+        if self.multiworld.players > 1:
+            return  # Solo multiworlds have too many local progression items
+        if (self.options.puzzle_goal == PuzzleGoal.option_no_puzzle
+                and self.options.puzzle_inclusion == PuzzleInclusion.option_no_puzzle
+                and not self.options.stage_clear_goal and not self.options.stage_clear_inclusion):
+            return  # Only seems to be a problem with Puzzle mode
+        match self.options.puzzle_mode:
+            case PuzzleMode.option_individual_stages:
+                # Force another level onto the starting level
+                starting_level = get_starting_puzzle_level(self)
+                base_name = "Puzzle"
+                if starting_level > 6:
+                    starting_level -= 6
+                    base_name = "Secret Puzzle"
+                intermediate_level_unlocks = [item for item in progitempool
+                                              if "Level 6" not in item.name
+                                              and item.player == self.player]
+                item_to_add = self.random.choice(intermediate_level_unlocks)
+                items_to_add = [item for item in progitempool
+                                if item.name == item_to_add.name]
+                starting_level_locations = [loc for loc in fill_locations
+                                            if (f"{base_name} {starting_level}-" in loc.name
+                                                or f"{base_name} Round {starting_level} Clear" in loc.name)
+                                            and (base_name == "Secret Puzzle" or "Secret" not in loc.name)
+                                            and loc.player == self.player]
+                while len(items_to_add) > 0 and len(starting_level_locations) > 0:
+                    i = self.random.choice(items_to_add)
+                    loc = self.random.choice(starting_level_locations)
+                    loc.place_locked_item(i)
+                    progitempool.remove(i)
+                    fill_locations.remove(loc)
+                    items_to_add.remove(i)
+                    intermediate_level_unlocks.remove(i)
+                    starting_level_locations.remove(loc)
+                if len(starting_level_locations) > 0:
+                    extra_item = self.random.choice(intermediate_level_unlocks)
+                    loc = self.random.choice(starting_level_locations)
+                    loc.place_locked_item(extra_item)
+                    progitempool.remove(extra_item)
+                    fill_locations.remove(loc)
+                    intermediate_level_unlocks.remove(extra_item)
+                    index = item_to_add.name.index("Unlock")
+                    next_level = int(item_to_add.name[index - 2: index - 1])
+                    if "Secret Puzzle" in item_to_add.name:
+                        base_name = "Secret Puzzle"
+                    else:
+                        base_name = "Puzzle"
+                    remaining_unlocks = [item for item in progitempool
+                                         if extra_item.name == item.name
+                                         and item.player == self.player]
+                    next_level_locations = [loc for loc in fill_locations
+                                            if (f"{base_name} {next_level}-" in loc.name
+                                                or f"{base_name} Round {next_level} Clear" in loc.name)
+                                            and (base_name == "Secret Puzzle" or "Secret" not in loc.name)
+                                            and loc.player == self.player]
+                    while len(remaining_unlocks) > 0 and len(next_level_locations) > 0:
+                        i = self.random.choice(remaining_unlocks)
+                        loc = self.random.choice(next_level_locations)
+                        loc.place_locked_item(i)
+                        progitempool.remove(i)
+                        fill_locations.remove(loc)
+                        remaining_unlocks.remove(i)
+                        intermediate_level_unlocks.remove(i)
+                        next_level_locations.remove(loc)
+                    if len(next_level_locations) > 0:
+                        last_to_add = self.random.choice(intermediate_level_unlocks)
+                        remaining_unlocks = [item for item in progitempool
+                                             if last_to_add.name == item.name
+                                             and item.player == self.player]
+                        while len(next_level_locations) > 0 and len(remaining_unlocks) > 0:
+                            i = self.random.choice(remaining_unlocks)
+                            loc = self.random.choice(next_level_locations)
+                            loc.place_locked_item(i)
+                            progitempool.remove(i)
+                            fill_locations.remove(loc)
+                            remaining_unlocks.remove(i)
+                            next_level_locations.remove(loc)
 
     def create_item(self, name: str) -> TetrisAttackItem:
         data = item_table[name]

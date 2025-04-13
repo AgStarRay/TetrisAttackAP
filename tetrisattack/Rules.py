@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 from .Locations import TetrisAttackLocation
 from .Logic import stage_clear_round_clears_included, stage_clear_round_completable, stage_clear_stage_completable, \
-    able_to_win, puzzle_round_completable, puzzle_stage_completable, puzzle_able_to_win, stage_clear_able_to_win
+    able_to_win, puzzle_level_completable, puzzle_stage_completable, puzzle_able_to_win, stage_clear_able_to_win
 from .Options import StarterPack, PuzzleGoal
 
 if TYPE_CHECKING:
@@ -30,12 +30,18 @@ def set_stage_clear_rules(world: "TetrisAttackWorld") -> None:
 def set_puzzle_rules(world: "TetrisAttackWorld") -> None:
     for level_number in range(1, 7):
         try_set_rule(world, f"Puzzle Round {level_number} Clear",
-                     lambda state, l=level_number: puzzle_round_completable(world, state, l))
+                     lambda state, l=level_number: puzzle_level_completable(world, state, l))
+        try_set_rule(world, f"Secret Puzzle Round {level_number} Clear",
+                     lambda state, l=level_number + 6: puzzle_level_completable(world, state, l))
         for stage_number in range(1, 10):
             try_set_rule(world, f"Puzzle {level_number}-0{stage_number} Clear",
                          lambda state, l=level_number, s=stage_number: puzzle_stage_completable(world, state, l, s))
+            try_set_rule(world, f"Secret Puzzle {level_number}-0{stage_number} Clear",
+                         lambda state, l=level_number + 6, s=stage_number: puzzle_stage_completable(world, state, l, s))
         try_set_rule(world, f"Puzzle {level_number}-10 Clear",
                      lambda state, l=level_number: puzzle_stage_completable(world, state, l, 10))
+        try_set_rule(world, f"Secret Puzzle {level_number}-10 Clear",
+                     lambda state, l=level_number + 6: puzzle_stage_completable(world, state, l, 10))
 
 
 def set_goal_rules(world: "TetrisAttackWorld") -> None:

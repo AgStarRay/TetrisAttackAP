@@ -3,8 +3,9 @@
 from BaseClasses import ItemClassification
 from .Logic import stage_clear_progressive_unlocks_included, stage_clear_individual_unlocks_included, \
     stage_clear_round_gates_included, puzzle_progressive_unlocks_included, puzzle_individual_unlocks_included, \
-    puzzle_level_gates_included, get_starting_sc_round, get_starting_puzzle_level
-from .Options import StarterPack, PuzzleGoal, PuzzleInclusion
+    puzzle_level_gates_included, get_starting_sc_round, get_starting_puzzle_level, normal_puzzle_set_included, \
+    secret_puzzle_set_included
+from .Options import StarterPack, PuzzleMode
 
 if TYPE_CHECKING:
     from . import TetrisAttackWorld
@@ -19,10 +20,9 @@ PZ_GOAL = 6
 PZ_PROGRESSIVE_UNLOCK = 7
 PZ_INDIVIDUAL_UNLOCK = 8
 PZ_LEVEL_GATE = 9
-SECRET_GOAL = 10
-SECRET_PROGRESSIVE_UNLOCK = 11
-SECRET_INDIVIDUAL_UNLOCK = 12
-SECRET_LEVEL_GATE = 13
+SECRET_PROGRESSIVE_UNLOCK = 10
+SECRET_INDIVIDUAL_UNLOCK = 11
+SECRET_LEVEL_GATE = 12
 
 
 class ItemData(NamedTuple):
@@ -61,17 +61,17 @@ item_table: Dict[str, ItemData] = {
                                                   ItemClassification.progression, 10, 0x08D, 0, 0x0CF),
     "Puzzle Progressive Level 6 Unlock": ItemData("Puzzle L6", 12, PZ_PROGRESSIVE_UNLOCK,
                                                   ItemClassification.progression, 10, 0x098, 0, 0x0DA),
-    "Secret Puzzle Progressive Level 1 Unlock": ItemData("Secret Puzzle L1", 13, SECRET_PROGRESSIVE_UNLOCK,
+    "Secret Puzzle Progressive Level 1 Unlock": ItemData("Secret L1", 13, SECRET_PROGRESSIVE_UNLOCK,
                                                          ItemClassification.progression, 10, 0x0A3),
-    "Secret Puzzle Progressive Level 2 Unlock": ItemData("Secret Puzzle L2", 14, SECRET_PROGRESSIVE_UNLOCK,
+    "Secret Puzzle Progressive Level 2 Unlock": ItemData("Secret L2", 14, SECRET_PROGRESSIVE_UNLOCK,
                                                          ItemClassification.progression, 10, 0x0AE),
-    "Secret Puzzle Progressive Level 3 Unlock": ItemData("Secret Puzzle L3", 15, SECRET_PROGRESSIVE_UNLOCK,
+    "Secret Puzzle Progressive Level 3 Unlock": ItemData("Secret L3", 15, SECRET_PROGRESSIVE_UNLOCK,
                                                          ItemClassification.progression, 10, 0x0B9),
-    "Secret Puzzle Progressive Level 4 Unlock": ItemData("Secret Puzzle L4", 16, SECRET_PROGRESSIVE_UNLOCK,
+    "Secret Puzzle Progressive Level 4 Unlock": ItemData("Secret L4", 16, SECRET_PROGRESSIVE_UNLOCK,
                                                          ItemClassification.progression, 10, 0x0C4),
-    "Secret Puzzle Progressive Level 5 Unlock": ItemData("Secret Puzzle L5", 17, SECRET_PROGRESSIVE_UNLOCK,
+    "Secret Puzzle Progressive Level 5 Unlock": ItemData("Secret L5", 17, SECRET_PROGRESSIVE_UNLOCK,
                                                          ItemClassification.progression, 10, 0x0CF),
-    "Secret Puzzle Progressive Level 6 Unlock": ItemData("Secret Puzzle L6", 18, SECRET_PROGRESSIVE_UNLOCK,
+    "Secret Puzzle Progressive Level 6 Unlock": ItemData("Secret L6", 18, SECRET_PROGRESSIVE_UNLOCK,
                                                          ItemClassification.progression, 10, 0x0DA),
     # Items with IDs of at least 0x020 correspond to SRAM locations
     "Stage Clear 1-1 Unlock": ItemData("SC Round 1", 0x021, SC_INDIVIDUAL_UNLOCK, ItemClassification.progression),
@@ -178,9 +178,113 @@ item_table: Dict[str, ItemData] = {
     "Puzzle 6-09 Unlock": ItemData("Puzzle L6", 0x0A0, PZ_INDIVIDUAL_UNLOCK, ItemClassification.progression),
     "Puzzle 6-10 Unlock": ItemData("Puzzle L6", 0x0A1, PZ_INDIVIDUAL_UNLOCK, ItemClassification.progression),
     "Puzzle Level 6 Gate": ItemData("Puzzle", 0x097, PZ_LEVEL_GATE, ItemClassification.progression),
+    "Secret Puzzle 1-01 Unlock": ItemData("Secret L1", 0x0A3, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 1-02 Unlock": ItemData("Secret L1", 0x0A4, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 1-03 Unlock": ItemData("Secret L1", 0x0A5, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 1-04 Unlock": ItemData("Secret L1", 0x0A6, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 1-05 Unlock": ItemData("Secret L1", 0x0A7, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 1-06 Unlock": ItemData("Secret L1", 0x0A8, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 1-07 Unlock": ItemData("Secret L1", 0x0A9, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 1-08 Unlock": ItemData("Secret L1", 0x0AA, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 1-09 Unlock": ItemData("Secret L1", 0x0AB, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 1-10 Unlock": ItemData("Secret L1", 0x0AC, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle Level 1 Gate": ItemData("Puzzle", 0x0A2, SECRET_LEVEL_GATE, ItemClassification.progression),
+    "Secret Puzzle 2-01 Unlock": ItemData("Secret L2", 0x0AE, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 2-02 Unlock": ItemData("Secret L2", 0x0AF, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 2-03 Unlock": ItemData("Secret L2", 0x0B0, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 2-04 Unlock": ItemData("Secret L2", 0x0B1, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 2-05 Unlock": ItemData("Secret L2", 0x0B2, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 2-06 Unlock": ItemData("Secret L2", 0x0B3, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 2-07 Unlock": ItemData("Secret L2", 0x0B4, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 2-08 Unlock": ItemData("Secret L2", 0x0B5, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 2-09 Unlock": ItemData("Secret L2", 0x0B6, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 2-10 Unlock": ItemData("Secret L2", 0x0B7, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle Level 2 Gate": ItemData("Puzzle", 0x0AD, SECRET_LEVEL_GATE, ItemClassification.progression),
+    "Secret Puzzle 3-01 Unlock": ItemData("Secret L3", 0x0B9, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 3-02 Unlock": ItemData("Secret L3", 0x0BA, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 3-03 Unlock": ItemData("Secret L3", 0x0BB, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 3-04 Unlock": ItemData("Secret L3", 0x0BC, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 3-05 Unlock": ItemData("Secret L3", 0x0BD, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 3-06 Unlock": ItemData("Secret L3", 0x0BE, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 3-07 Unlock": ItemData("Secret L3", 0x0BF, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 3-08 Unlock": ItemData("Secret L3", 0x0C0, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 3-09 Unlock": ItemData("Secret L3", 0x0C1, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 3-10 Unlock": ItemData("Secret L3", 0x0C2, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle Level 3 Gate": ItemData("Puzzle", 0x0B8, SECRET_LEVEL_GATE, ItemClassification.progression),
+    "Secret Puzzle 4-01 Unlock": ItemData("Secret L4", 0x0C4, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 4-02 Unlock": ItemData("Secret L4", 0x0C5, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 4-03 Unlock": ItemData("Secret L4", 0x0C6, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 4-04 Unlock": ItemData("Secret L4", 0x0C7, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 4-05 Unlock": ItemData("Secret L4", 0x0C8, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 4-06 Unlock": ItemData("Secret L4", 0x0C9, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 4-07 Unlock": ItemData("Secret L4", 0x0CA, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 4-08 Unlock": ItemData("Secret L4", 0x0CB, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 4-09 Unlock": ItemData("Secret L4", 0x0CC, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 4-10 Unlock": ItemData("Secret L4", 0x0CD, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle Level 4 Gate": ItemData("Puzzle", 0x0C3, SECRET_LEVEL_GATE, ItemClassification.progression),
+    "Secret Puzzle 5-01 Unlock": ItemData("Secret L5", 0x0CF, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 5-02 Unlock": ItemData("Secret L5", 0x0D0, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 5-03 Unlock": ItemData("Secret L5", 0x0D1, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 5-04 Unlock": ItemData("Secret L5", 0x0D2, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 5-05 Unlock": ItemData("Secret L5", 0x0D3, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 5-06 Unlock": ItemData("Secret L5", 0x0D4, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 5-07 Unlock": ItemData("Secret L5", 0x0D5, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 5-08 Unlock": ItemData("Secret L5", 0x0D6, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 5-09 Unlock": ItemData("Secret L5", 0x0D7, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 5-10 Unlock": ItemData("Secret L5", 0x0D8, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle Level 5 Gate": ItemData("Puzzle", 0x0CE, SECRET_LEVEL_GATE, ItemClassification.progression),
+    "Secret Puzzle 6-01 Unlock": ItemData("Secret L6", 0x0DA, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 6-02 Unlock": ItemData("Secret L6", 0x0DB, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 6-03 Unlock": ItemData("Secret L6", 0x0DC, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 6-04 Unlock": ItemData("Secret L6", 0x0DD, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 6-05 Unlock": ItemData("Secret L6", 0x0DE, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 6-06 Unlock": ItemData("Secret L6", 0x0DF, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 6-07 Unlock": ItemData("Secret L6", 0x0E0, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 6-08 Unlock": ItemData("Secret L6", 0x0E1, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 6-09 Unlock": ItemData("Secret L6", 0x0E2, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle 6-10 Unlock": ItemData("Secret L6", 0x0E3, SECRET_INDIVIDUAL_UNLOCK, ItemClassification.progression),
+    "Secret Puzzle Level 6 Gate": ItemData("Puzzle", 0x0D9, SECRET_LEVEL_GATE, ItemClassification.progression),
     "Stage Clear Completion": ItemData("Stage Clear", None, SC_GOAL, ItemClassification.progression),
     "Puzzle Completion": ItemData("Puzzle", None, PZ_GOAL, ItemClassification.progression),
-    "Placeholder Filler": ItemData("Menu", 0x01FE, FILLER, ItemClassification.filler),
+
+    "50 Points": ItemData("Stage Clear", 0x100, FILLER, ItemClassification.filler),
+    "80 Points": ItemData("Stage Clear", 0x101, FILLER, ItemClassification.filler),
+    "150 Points": ItemData("Stage Clear", 0x102, FILLER, ItemClassification.filler),
+    "300 Points": ItemData("Stage Clear", 0x103, FILLER, ItemClassification.filler),
+    "400 Points": ItemData("Stage Clear", 0x104, FILLER, ItemClassification.filler),
+    "500 Points": ItemData("Stage Clear", 0x105, FILLER, ItemClassification.filler),
+    "700 Points": ItemData("Stage Clear", 0x106, FILLER, ItemClassification.filler),
+    "900 Points": ItemData("Stage Clear", 0x107, FILLER, ItemClassification.filler),
+    "1100 Points": ItemData("Stage Clear", 0x108, FILLER, ItemClassification.filler),
+    "1300 Points": ItemData("Stage Clear", 0x109, FILLER, ItemClassification.filler),
+    "1500 Points": ItemData("Stage Clear", 0x10A, FILLER, ItemClassification.filler),
+    "1800 Points": ItemData("Stage Clear", 0x10B, FILLER, ItemClassification.filler),
+    "20 Points": ItemData("Stage Clear", 0x10C, FILLER, ItemClassification.filler),
+    "30 Points": ItemData("Stage Clear", 0x10D, FILLER, ItemClassification.filler),
+    # "50 Points": ItemData("Stage Clear", 0x10E, FILLER, ItemClassification.filler),
+    "60 Points": ItemData("Stage Clear", 0x10F, FILLER, ItemClassification.filler),
+    "70 Points": ItemData("Stage Clear", 0x110, FILLER, ItemClassification.filler),
+    # "80 Points": ItemData("Stage Clear", 0x111, FILLER, ItemClassification.filler),
+    "100 Points": ItemData("Stage Clear", 0x112, FILLER, ItemClassification.filler),
+    "140 Points": ItemData("Stage Clear", 0x113, FILLER, ItemClassification.filler),
+    "170 Points": ItemData("Stage Clear", 0x114, FILLER, ItemClassification.filler),
+    "210 Points": ItemData("Stage Clear", 0x115, FILLER, ItemClassification.filler),
+    "250 Points": ItemData("Stage Clear", 0x116, FILLER, ItemClassification.filler),
+    "290 Points": ItemData("Stage Clear", 0x117, FILLER, ItemClassification.filler),
+    "340 Points": ItemData("Stage Clear", 0x118, FILLER, ItemClassification.filler),
+    "390 Points": ItemData("Stage Clear", 0x119, FILLER, ItemClassification.filler),
+    "440 Points": ItemData("Stage Clear", 0x11A, FILLER, ItemClassification.filler),
+    "490 Points": ItemData("Stage Clear", 0x11B, FILLER, ItemClassification.filler),
+    "550 Points": ItemData("Stage Clear", 0x11C, FILLER, ItemClassification.filler),
+    "610 Points": ItemData("Stage Clear", 0x11D, FILLER, ItemClassification.filler),
+    "680 Points": ItemData("Stage Clear", 0x11E, FILLER, ItemClassification.filler),
+    "750 Points": ItemData("Stage Clear", 0x11F, FILLER, ItemClassification.filler),
+    "820 Points": ItemData("Stage Clear", 0x120, FILLER, ItemClassification.filler),
+    "980 Points": ItemData("Stage Clear", 0x121, FILLER, ItemClassification.filler),
+    "1060 Points": ItemData("Stage Clear", 0x122, FILLER, ItemClassification.filler),
+    "1150 Points": ItemData("Stage Clear", 0x123, FILLER, ItemClassification.filler),
+    "1240 Points": ItemData("Stage Clear", 0x124, FILLER, ItemClassification.filler),
+    "1330 Points": ItemData("Stage Clear", 0x125, FILLER, ItemClassification.filler),
 }
 
 filler_items = filter((lambda item_tuple: item_tuple[1].item_class == FILLER), item_table.items())
@@ -192,14 +296,15 @@ for name, data in item_table.items():
 
 
 def get_items(world: Optional["TetrisAttackWorld"]) -> Dict[str, ItemData]:
-    include_stage_clear = True
     include_sc_progressive_unlocks = True
     include_sc_individual_unlocks = True
     include_sc_round_gates = True
-    include_puzzle = True
     include_pz_progressive_unlocks = True
     include_pz_individual_unlocks = True
     include_pz_level_gates = True
+    include_secret_progressive_unlocks = True
+    include_secret_individual_unlocks = True
+    include_secret_level_gates = True
     special_stage_trap_count = 1
     excluded_items: Set[str] = set()
     if world:
@@ -207,10 +312,17 @@ def get_items(world: Optional["TetrisAttackWorld"]) -> Dict[str, ItemData]:
         include_sc_progressive_unlocks = stage_clear_progressive_unlocks_included(world)
         include_sc_individual_unlocks = stage_clear_individual_unlocks_included(world)
         include_sc_round_gates = stage_clear_round_gates_included(world)
-        include_puzzle = world.options.puzzle_goal != PuzzleGoal.option_no_puzzle or world.options.puzzle_inclusion != PuzzleInclusion.option_no_puzzle
-        include_pz_progressive_unlocks = puzzle_progressive_unlocks_included(world)
-        include_pz_individual_unlocks = puzzle_individual_unlocks_included(world)
-        include_pz_level_gates = puzzle_level_gates_included(world)
+        include_normal_puzzles = normal_puzzle_set_included(world)
+        include_secret_puzzles = secret_puzzle_set_included(world)
+        puzzle_progressive_unlocks = puzzle_progressive_unlocks_included(world)
+        puzzle_individual_unlocks = puzzle_individual_unlocks_included(world)
+        puzzle_level_gates = puzzle_level_gates_included(world)
+        include_pz_progressive_unlocks = puzzle_progressive_unlocks and include_normal_puzzles
+        include_pz_individual_unlocks = puzzle_individual_unlocks and include_normal_puzzles
+        include_pz_level_gates = puzzle_level_gates and include_normal_puzzles
+        include_secret_progressive_unlocks = puzzle_progressive_unlocks and include_secret_puzzles
+        include_secret_individual_unlocks = puzzle_individual_unlocks and include_secret_puzzles
+        include_secret_level_gates = puzzle_level_gates and include_secret_puzzles
         special_stage_trap_count = world.options.special_stage_trap_count.value
         if not include_stage_clear:
             special_stage_trap_count = 0
@@ -233,6 +345,12 @@ def get_items(world: Optional["TetrisAttackWorld"]) -> Dict[str, ItemData]:
         included_classes.append(PZ_INDIVIDUAL_UNLOCK)
     if include_pz_level_gates:
         included_classes.append(PZ_LEVEL_GATE)
+    if include_secret_progressive_unlocks:
+        included_classes.append(SECRET_PROGRESSIVE_UNLOCK)
+    if include_secret_individual_unlocks:
+        included_classes.append(SECRET_INDIVIDUAL_UNLOCK)
+    if include_secret_level_gates:
+        included_classes.append(SECRET_LEVEL_GATE)
 
     new_items = dict(filter(lambda item: item[1].item_class in included_classes and item[0] not in excluded_items,
                             item_table.items()))
@@ -245,6 +363,7 @@ def get_items(world: Optional["TetrisAttackWorld"]) -> Dict[str, ItemData]:
 def get_starter_item_names(world: "TetrisAttackWorld") -> List[str]:
     starting_sc_round = get_starting_sc_round(world)
     starting_puzzle_level = get_starting_puzzle_level(world)
+    secret_puzzles_included = secret_puzzle_set_included(world)
 
     starter_items: List[str] = []
     if stage_clear_round_gates_included(world):
@@ -262,14 +381,36 @@ def get_starter_item_names(world: "TetrisAttackWorld") -> List[str]:
             starter_items.append(f"Stage Clear {starting_sc_round}-4 Unlock")
             starter_items.append(f"Stage Clear {starting_sc_round}-5 Unlock")
     if puzzle_level_gates_included(world):
-        if starting_puzzle_level > 0:
+        if starting_puzzle_level > 6:
+            starter_items.append(f"Secret Puzzle Level {starting_puzzle_level - 6} Gate")
+        elif starting_puzzle_level > 0:
             starter_items.append(f"Puzzle Level {starting_puzzle_level} Gate")
     if puzzle_progressive_unlocks_included(world):
-        if starting_puzzle_level > 0:
+        if starting_puzzle_level > 6:
+            for _ in range(10):
+                starter_items.append(f"Secret Puzzle Progressive Level {starting_puzzle_level - 6} Unlock")
+        elif starting_puzzle_level > 0:
             for _ in range(10):
                 starter_items.append(f"Puzzle Progressive Level {starting_puzzle_level} Unlock")
+                 # TODO: Remove after finding a better way to enforce logic
+                if secret_puzzles_included and (
+                        world.options.puzzle_mode == PuzzleMode.option_individual_stages
+                        or world.options.puzzle_mode == PuzzleMode.option_incremental_with_level_gate
+                        or world.options.puzzle_mode == PuzzleMode.option_skippable_with_level_gate):
+                    starter_items.append(f"Secret Puzzle Progressive Level {starting_puzzle_level} Unlock")
     elif puzzle_individual_unlocks_included(world):
-        if starting_puzzle_level > 0:
+        if starting_puzzle_level > 6:
+            starter_items.append(f"Secret Puzzle {starting_puzzle_level - 6}-01 Unlock")
+            starter_items.append(f"Secret Puzzle {starting_puzzle_level - 6}-02 Unlock")
+            starter_items.append(f"Secret Puzzle {starting_puzzle_level - 6}-03 Unlock")
+            starter_items.append(f"Secret Puzzle {starting_puzzle_level - 6}-04 Unlock")
+            starter_items.append(f"Secret Puzzle {starting_puzzle_level - 6}-05 Unlock")
+            starter_items.append(f"Secret Puzzle {starting_puzzle_level - 6}-06 Unlock")
+            starter_items.append(f"Secret Puzzle {starting_puzzle_level - 6}-07 Unlock")
+            starter_items.append(f"Secret Puzzle {starting_puzzle_level - 6}-08 Unlock")
+            starter_items.append(f"Secret Puzzle {starting_puzzle_level - 6}-09 Unlock")
+            starter_items.append(f"Secret Puzzle {starting_puzzle_level - 6}-10 Unlock")
+        elif starting_puzzle_level > 0:
             starter_items.append(f"Puzzle {starting_puzzle_level}-01 Unlock")
             starter_items.append(f"Puzzle {starting_puzzle_level}-02 Unlock")
             starter_items.append(f"Puzzle {starting_puzzle_level}-03 Unlock")
@@ -280,4 +421,15 @@ def get_starter_item_names(world: "TetrisAttackWorld") -> List[str]:
             starter_items.append(f"Puzzle {starting_puzzle_level}-08 Unlock")
             starter_items.append(f"Puzzle {starting_puzzle_level}-09 Unlock")
             starter_items.append(f"Puzzle {starting_puzzle_level}-10 Unlock")
+            if secret_puzzles_included: # TODO: Remove after finding a better way to enforce logic
+                starter_items.append(f"Secret Puzzle {starting_puzzle_level}-01 Unlock")
+                starter_items.append(f"Secret Puzzle {starting_puzzle_level}-02 Unlock")
+                starter_items.append(f"Secret Puzzle {starting_puzzle_level}-03 Unlock")
+                starter_items.append(f"Secret Puzzle {starting_puzzle_level}-04 Unlock")
+                starter_items.append(f"Secret Puzzle {starting_puzzle_level}-05 Unlock")
+                starter_items.append(f"Secret Puzzle {starting_puzzle_level}-06 Unlock")
+                starter_items.append(f"Secret Puzzle {starting_puzzle_level}-07 Unlock")
+                starter_items.append(f"Secret Puzzle {starting_puzzle_level}-08 Unlock")
+                starter_items.append(f"Secret Puzzle {starting_puzzle_level}-09 Unlock")
+                starter_items.append(f"Secret Puzzle {starting_puzzle_level}-10 Unlock")
     return starter_items

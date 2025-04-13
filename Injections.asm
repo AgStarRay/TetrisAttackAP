@@ -27,6 +27,29 @@ org $808200
 JSL CODE_SRAMHealthCheck
 BRA CODE_80820C
 
+; Add entry points to word subroutines
+org $82F59E
+CODE_82E2D6_JSR:
+PHB
+PEA.W UNREACH_828200
+PLB
+PLB
+JSR.W CODE_82E2D6
+PLB
+RTL
+CODE_82E1AF_JSR:
+PHB
+PEA.W UNREACH_828200
+PLB
+PLB
+JSR.W $82E1AF
+PLB
+RTL
+
+; Set a new spot for what score to load
+org $87D4A3
+JML.L CODE_LoadCustomScore
+
 ; Change when Bowser turns red in the special stages
 org $829BDD
 JML.L CODE_SCBowserCustomColor
@@ -215,6 +238,9 @@ CODE_MenuPZSetPuzzleIndex_JSR:
 CODE_83EE98_JSR:
     JSR.W CODE_83EE98
     RTL
+CODE_83A9E3_JSR:
+    JSR.W CODE_83A9E3
+    RTL
 
 ; TODO: Add new submenu for Vs.
 
@@ -225,6 +251,13 @@ JML.L CODE_SCUpdateHPWithCustomIndex
 ; Control how Bowser's HP bar fills up at the beginning
 org $87A7ED
 JML.L CODE_SCBowserFillHP
+
+; Don't toss saved score after starting Stage Clear
+org $87A9BC
+STZ.W $0332
+STZ.W $0334
+STZ.W $0336
+RTS
 
 ; TODO_AFTER: Have Stage Clear send its item slightly earlier
 org $829BCE

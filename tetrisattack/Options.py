@@ -9,13 +9,12 @@ class StageClearGoal(DefaultOnToggle):
 
 class PuzzleGoal(Choice):
     """This makes Puzzle and/or Secret Puzzle Round 6 Clear one of the goals.
-    If multiple modes need to be cleared, each will provide a final item and auto-hint the other win conditions.
-    NOTE: Secret Puzzles are not integrated yet."""
+    If multiple modes need to be cleared, each will provide a final item and auto-hint the other win conditions."""
     option_no_puzzle = 0
     option_puzzle = 1
-    # option_secret_puzzle = 2
-    # option_puzzle_and_secret_puzzle = 3
-    # option_puzzle_or_secret_puzzle = 4
+    option_secret_puzzle = 2
+    option_puzzle_and_secret_puzzle = 3
+    option_puzzle_or_secret_puzzle = 4
     default = 1
 
 
@@ -52,8 +51,8 @@ class PuzzleInclusion(Choice):
     NOTE: Secret Puzzles are not integrated yet."""
     option_no_puzzle = 0
     option_puzzle = 1
-    # option_secret_puzzle = 2
-    # option_puzzle_and_secret_puzzle = 3
+    option_secret_puzzle = 2
+    option_puzzle_and_secret_puzzle = 3
     default = 0
 
 
@@ -118,7 +117,8 @@ class StageClearSaves(DefaultOnToggle):
 class SpecialStageTraps(Range):
     """Adds extra locations to certain Stage Clear stages such as Round 3 Clear, but as a consequence adds the Special Stage trap.
     When tripped, you must either win or lose the Special Stage before you can continue.
-    Requires Stage Clear to be included."""
+    Requires Stage Clear to be included or as a goal."""
+    # TODO_AFTER: Enable Special Stage traps when Stage Clear is not included after making a new main menu
     range_start = 0
     range_end = 30
     default = 1
@@ -158,7 +158,8 @@ class SecretPuzzleBehindRegular(Choice):
     """Determines the relationship between regular puzzles and secret puzzles when both are included.
     Think of it as deciding on either 12 levels containing 10 puzzles or 6 levels containing 20 puzzles.
     Separate treats each regular and secret level as independent regions.
-    Passive still keeps them separate but tells Archipelago that the regular puzzles are logically required first. Doing secret puzzles before their respective regular counterparts is considered out of logic.
+    Passive still keeps them separate but tells Archipelago that the regular puzzles are logically required first.
+    Doing secret puzzles before their respective regular counterparts is considered out of logic.
     Strict makes each secret level require clearing their respective regular level.
     Followup halves the number of unlocks in the item pool, and clearing in the regular level automatically unlocks their secret counterpart.
     Followup can generate a lot of filler items.
@@ -168,6 +169,21 @@ class SecretPuzzleBehindRegular(Choice):
     option_strict = 2
     option_followup = 3
     default = 1
+
+
+class ChainsCheckLimit(Range):
+    """Adds a number of locations that are checked when you perform a chain level, starting from x2. Set to 1 to not include.
+    The highest level chain will always have a non-progression item. Level 14 corresponds to the "x?" chain."""
+    range_start = 1
+    range_end = 14
+    default = 6
+
+
+class CombosCheckLimit(Range):
+    """Adds a number of locations that are checked for each combo, starting from 4 combos. Set to 3 to not include."""
+    range_start = 3
+    range_end = 12
+    default = 10
 
 
 @dataclass
@@ -180,11 +196,11 @@ class TetrisAttackOptions(PerGameCommonOptions):
     # autohints: AutoHints
     death_link: DeathLink
     stage_clear_mode: StageClearMode
+    stage_clear_filler: StageClearFiller
     stage_clear_saves: StageClearSaves
     special_stage_trap_count: SpecialStageTraps
-    stage_clear_filler: StageClearFiller
-    puzzle_filler: PuzzleFiller
     special_stage_hp_multiplier: SpecialStageHPMultiplier
     last_stage_hp_multiplier: LastStageHPMultiplier
     puzzle_mode: PuzzleMode
+    puzzle_filler: PuzzleFiller
     # secret_puzzle_behind_regular: SecretPuzzleBehindRegular

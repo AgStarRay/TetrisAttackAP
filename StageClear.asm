@@ -14,6 +14,13 @@ DATA16_A2_StageClearRoundClearOffsets:
     dw SRAM_StageClearRound5Clears
     dw SRAM_StageClearRound6Clears
 
+CODE_LoadCustomScore:
+    LDA.L SRAM_StageClearScore_Lo
+    STA.W WRAM87_Score_Lo
+    LDA.L SRAM_StageClearScore_Hi
+    STA.W WRAM87_Score_Hi
+    JML.L CODE_87D4AF
+
 CODE_OnStageClearWin:
     PHP
     SEP #$20
@@ -89,6 +96,10 @@ CODE_OnStageClearWin:
         .NoBravoSound:
     .SaveProgress:
     REP #$30
+    LDA.W WRAM7E_Score_Lo
+    STA.L SRAM_StageClearScore_Lo
+    LDA.W WRAM7E_Score_Hi
+    STA.L SRAM_StageClearScore_Hi
     JSL.L CODE_SRAMSave
     LDA.W #$000A
     STA.W WRAM7E_GameSubstate

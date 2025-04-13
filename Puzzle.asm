@@ -29,7 +29,6 @@ DATA16_A2_PuzzleSecretLevelClearOffsets:
     dw SRAM_PuzzleSecretLevel6Clears
 
 CODE_OnPuzzleWin:
-    ;TODO: Check if the credits can roll
     PHP
     print "Puzzle clear logic at ",pc
     REP #$30
@@ -139,6 +138,20 @@ CODE_PuzzleCustomCreditsCheck:
     LDA.W WRAM7E_PuzzleLevelIndex
     CMP.W #$0005
     BNE .End
+    LDA.L DATA8_GoalPuzzle
+    BIT.W #%100
+    BNE .RollCredits
+    LDA.W WRAM7E_PuzzleSecretFlag
+    BNE .SecretCreditsCheck
+        LDA.L DATA8_GoalPuzzle
+        BIT.W #%001
+        BNE .RollCredits
+        BRA .End
+    .SecretCreditsCheck:
+        LDA.L DATA8_GoalPuzzle
+        BIT.W #%010
+        BEQ .End
+    .RollCredits:
         LDA.W #$0001
         STA.L $7E6395
         JSL.L CODE_86D7D8

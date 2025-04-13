@@ -8,12 +8,12 @@ from struct import pack
 
 import settings
 from worlds.Files import APProcedurePatch, APTokenMixin, APTokenTypes
-from .Logic import stage_clear_individual_clears_included, stage_clear_round_clears_included, \
-    stage_clear_individual_unlocks_included, stage_clear_round_gates_included, stage_clear_progressive_unlocks_included, \
-    round_clear_has_special, stage_clear_has_special, puzzle_individual_unlocks_included, \
-    puzzle_progressive_unlocks_included, puzzle_level_gates_included, get_starting_sc_round, get_starting_puzzle_level, \
-    puzzle_round_clears_included, puzzle_individual_clears_included
-from .Options import StarterPack, StageClearMode, PuzzleMode, PuzzleGoal, PuzzleInclusion
+from .Logic import stage_clear_individual_clears_included, stage_clear_round_clears_included, round_clear_has_special, \
+    stage_clear_has_special, puzzle_round_clears_included, puzzle_individual_clears_included, \
+    normal_puzzle_set_included, secret_puzzle_set_included, get_starting_sc_round, puzzle_individual_unlocks_included, \
+    puzzle_progressive_unlocks_included, puzzle_level_gates_included, get_starting_puzzle_level, \
+    stage_clear_individual_unlocks_included, stage_clear_progressive_unlocks_included, stage_clear_round_gates_included
+from .Options import StarterPack, StageClearMode, PuzzleMode, PuzzleGoal
 
 if TYPE_CHECKING:
     from . import TetrisAttackWorld
@@ -48,8 +48,8 @@ PUZZLESL3_CHECKS = ARCHIPELAGO_DATA + 0x0B8
 PUZZLESL4_CHECKS = ARCHIPELAGO_DATA + 0x0C3
 PUZZLESL5_CHECKS = ARCHIPELAGO_DATA + 0x0CE
 PUZZLESL6_CHECKS = ARCHIPELAGO_DATA + 0x0D9
-INITIAL_SC_UNLOCKS = ARCHIPELAGO_DATA + 0x100
-INITIAL_PZ_UNLOCKS = ARCHIPELAGO_DATA + 0x140
+INITIAL_SC_UNLOCKS = ARCHIPELAGO_DATA + 0x120
+INITIAL_PZ_UNLOCKS = ARCHIPELAGO_DATA + 0x160
 SCSBOWSER_HP = ARCHIPELAGO_DATA + 0x300
 SCSBOWSER_HPSTAGE1 = ARCHIPELAGO_DATA + 0x302
 SCSBOWSER_HPSTAGE2 = ARCHIPELAGO_DATA + 0x304
@@ -113,7 +113,8 @@ class TATKProcedurePatch(APProcedurePatch, APTokenMixin):
 def patch_rom(world: "TetrisAttackWorld", patch: TATKProcedurePatch) -> None:
     patch.write_file("tatk_basepatch.bsdiff4", pkgutil.get_data(__name__, "data/tatk_basepatch.bsdiff4"))
     puzzle_goals = int(world.options.puzzle_goal)
-    # if puzzle_goals == PuzzleGoal.option_puzzle_or_secret_puzzle
+    if puzzle_goals == PuzzleGoal.option_puzzle_or_secret_puzzle:
+        puzzle_goals = 0b111
     # TODO: Add All Clear option
     patch.write_bytes(GOALS_POSITION, [int(world.options.stage_clear_goal), puzzle_goals, 0x0])
     patch.write_byte(DEATHLINKHINT, 1 if world.options.death_link else 0)
@@ -133,9 +134,9 @@ def patch_rom(world: "TetrisAttackWorld", patch: TATKProcedurePatch) -> None:
     if world.options.starter_pack != StarterPack.option_stage_clear_round_6:
         sc_mode |= 0b10000
     patch.write_byte(SCMODE, sc_mode)
+    rc_inc = stage_clear_round_clears_included(world)
+    ic_inc = stage_clear_individual_clears_included(world)
     if include_stage_clear:
-        rc_inc = stage_clear_round_clears_included(world)
-        ic_inc = stage_clear_individual_clears_included(world)
         special_stage_count = world.options.special_stage_trap_count.value
         for x in range(0, 6):
             rchecks = get_checks_for_sc_round_clear(x + 1, rc_inc, special_stage_count)
@@ -153,20 +154,25 @@ def patch_rom(world: "TetrisAttackWorld", patch: TATKProcedurePatch) -> None:
     patch.write_bytes(VSCHARACTER_CHECKS, [0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00, 0b00])
 
     # Puzzle
-    include_puzzle = world.options.puzzle_goal != PuzzleGoal.option_no_puzzle or world.options.puzzle_inclusion != PuzzleInclusion.option_no_puzzle
-    pz_mode = 0b00
+    include_puzzle = normal_puzzle_set_included(world)
+    include_secret = secret_puzzle_set_included(world)
+    pz_mode = 0b00000
     match world.options.puzzle_mode:
         case PuzzleMode.option_incremental \
              | PuzzleMode.option_incremental_with_level_gate:
-            pz_mode = 0b01
+            pz_mode = 0b00001
         case PuzzleMode.option_skippable \
              | PuzzleMode.option_skippable_with_level_gate:
-            pz_mode = 0b11
-    patch.write_byte(PZMODE, pz_mode)
+            pz_mode = 0b00011
     if include_puzzle:
-        rc_inc = puzzle_round_clears_included(world)
-        ic_inc = puzzle_individual_clears_included(world)
-        for x in range(0, 6):
+        pz_mode |= 0b00100
+    if include_secret:
+        pz_mode |= 0b01000
+    patch.write_byte(PZMODE, pz_mode)
+    rc_inc = puzzle_round_clears_included(world)
+    ic_inc = puzzle_individual_clears_included(world)
+    for x in range(0, 6):
+        if include_puzzle:
             rchecks = get_checks_for_pz_round_clear(x + 1, rc_inc)
             s01 = get_checks_for_puzzle_clear(x + 1, 1, ic_inc)
             s02 = get_checks_for_puzzle_clear(x + 1, 2, ic_inc)
@@ -179,6 +185,19 @@ def patch_rom(world: "TetrisAttackWorld", patch: TATKProcedurePatch) -> None:
             s09 = get_checks_for_puzzle_clear(x + 1, 9, ic_inc)
             s10 = get_checks_for_puzzle_clear(x + 1, 10, ic_inc)
             patch.write_bytes(PUZZLEL1_CHECKS + x * 11, [rchecks, s01, s02, s03, s04, s05, s06, s07, s08, s09, s10])
+        if include_secret:
+            rchecks = get_checks_for_pz_round_clear(x + 7, rc_inc)
+            s01 = get_checks_for_puzzle_clear(x + 7, 1, ic_inc)
+            s02 = get_checks_for_puzzle_clear(x + 7, 2, ic_inc)
+            s03 = get_checks_for_puzzle_clear(x + 7, 3, ic_inc)
+            s04 = get_checks_for_puzzle_clear(x + 7, 4, ic_inc)
+            s05 = get_checks_for_puzzle_clear(x + 7, 5, ic_inc)
+            s06 = get_checks_for_puzzle_clear(x + 7, 6, ic_inc)
+            s07 = get_checks_for_puzzle_clear(x + 7, 7, ic_inc)
+            s08 = get_checks_for_puzzle_clear(x + 7, 8, ic_inc)
+            s09 = get_checks_for_puzzle_clear(x + 7, 9, ic_inc)
+            s10 = get_checks_for_puzzle_clear(x + 7, 10, ic_inc)
+            patch.write_bytes(PUZZLESL1_CHECKS + x * 11, [rchecks, s01, s02, s03, s04, s05, s06, s07, s08, s09, s10])
 
     # Initial Unlocks
     starting_sc_round = get_starting_sc_round(world)
@@ -201,13 +220,21 @@ def patch_rom(world: "TetrisAttackWorld", patch: TATKProcedurePatch) -> None:
                                          or puzzle_progressive_unlocks_included(world))
     first_stage_already_unlocked = other_stages_already_unlocked
     gate_already_unlocked = not puzzle_level_gates_included(world)
-    for x in range(1, 7):
+    for x in range(1, 13):
         is_initial_level = x == starting_puzzle_level
         s1_unlock = first_stage_already_unlocked or is_initial_level
         sx_unlock = other_stages_already_unlocked or is_initial_level
         gate_unlocked = gate_already_unlocked or is_initial_level
+        # TODO: Remove after finding a better way to enforce logic
+        if starting_puzzle_level > 0 and x % 6 == starting_puzzle_level % 6 and (
+                world.options.puzzle_mode == PuzzleMode.option_individual_stages
+                or world.options.puzzle_mode == PuzzleMode.option_incremental_with_level_gate
+                or world.options.puzzle_mode == PuzzleMode.option_skippable_with_level_gate):
+            s1_unlock = True
+            sx_unlock = True
         patch.write_bytes(INITIAL_PZ_UNLOCKS + 11 * (x - 1), [
-            gate_unlocked, s1_unlock, sx_unlock, sx_unlock, sx_unlock, sx_unlock, sx_unlock, sx_unlock, sx_unlock, sx_unlock, sx_unlock
+            gate_unlocked, s1_unlock, sx_unlock, sx_unlock, sx_unlock, sx_unlock, sx_unlock, sx_unlock, sx_unlock,
+            sx_unlock, sx_unlock
         ])
 
     # Special Stage and Last Stage

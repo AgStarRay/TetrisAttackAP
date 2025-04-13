@@ -39,8 +39,8 @@ DeathlinkCode_VsTopOutStage12 = $001B ; {Player} lost to Bowser
 
 
 SRAM_ArmCrash = $700000
-; SRAM_??? = $700002
-; SRAM_??? = $700004
+SRAM_StageClearScore_Lo = $700002
+SRAM_StageClearScore_Hi = $700004
 ; SRAM_??? = $700006
 SRAM_StageClearSpecialStageCompletions = $700008
 SRAM_StageClearBowserDamage = $700009
@@ -72,6 +72,8 @@ SRAM_PuzzleSecretLevel4Unlocks = $7000C3
 SRAM_PuzzleSecretLevel5Unlocks = $7000CE
 SRAM_PuzzleSecretLevel6Unlocks = $7000D9
 SRAM_PuzzlePanelUnlocks = $7000E4
+SRAM_ScoreInstanceCounts = $700100
+;SRAM_??? = $700120
 SRAM_UnlocksRegionEnd = $700200
 SRAM_StageClearRound1Clears = $700200
 SRAM_StageClearRound2Clears = $700206
@@ -130,6 +132,9 @@ SRAM_SCCurrentHealthBar = $70044A
 SRAM_SCPreviousHealthBar = $70044C
 SRAM_LoopCounter = $70044E
 SRAM_PuzzleFanfareIsRoundClear = $700450
+SRAM_PrintedSwitchMessage = $700452
+SRAM_TempMovA = $700454
+SRAM_TempMovB = $700456
 ; Regions
 SRAM_PendingUnlocks = $700500
 SRAM_End = $700800
@@ -157,7 +162,8 @@ incsrc "Injections.asm"
 ; 32 KB reserved for all location data, starting items, settings, and hint strings
 DATA8_GoalStageClear = $A08000
 ; Puzzle Goal Flags
-;   ------sn
+;   -----esn
+;        e = either clear is goal
 ;         s = Secret Puzzle Round 6 Clear
 ;          n = Puzzle Round 6 Clear
 DATA8_GoalPuzzle = $A08001
@@ -171,8 +177,11 @@ DATA8_GoalVersus = $A08002 ; 1 = stage 10, 2 = stage 11, 3 = stage 12, 4 = stage
 ;         s = Skippable mode, allows skipping over locked stages, but all 5 stages are still needed for a Round Clear
 ;          i = Incremental mode, lets the player start without all the stages
 DATA8_StageClearFlags = $A08003
-; Stage Clear Flags
-;   -------i
+; Puzzle Flags
+;   ---fen-i
+;      f = fast menu animations and countdowns
+;       e = secret puzzle access
+;        n = normal puzzle access
 ;          i = Incremental mode, lets the player start without all the puzzles
 DATA8_PuzzleFlags = $A08004
 DATA8_VersusFlags = $A08005
@@ -214,7 +223,8 @@ DATA8_PuzzleSecretLevel3Checks = $A080B8
 DATA8_PuzzleSecretLevel4Checks = $A080C3
 DATA8_PuzzleSecretLevel5Checks = $A080CE
 DATA8_PuzzleSecretLevel6Checks = $A080D9
-DATA8_InitialUnlocks = $A08100 ; The values in SRAM are bitwise OR'd with this data
+;DATA_??? = $A080E4
+DATA8_InitialUnlocks = $A08120 ; The values in SRAM are bitwise OR'd with this data
 DATA16_SCSpecialBowserHP = $A08300
 DATA16_SCSpecialBowserHPStage1 = $A08302
 DATA16_SCSpecialBowserHPStage2 = $A08304
@@ -487,12 +497,14 @@ CODE_1PlayerGameSummon:
 
 CODE_NewMainMenuState9:
     print "New main menu state 9 routine at ",pc
+    ; TODO_AFTER: Disallow access to modes that are not included
     ;LDA.L WRAM7E_MenuPadPress
     ;BIT.W #$0060
     ;BEQ SkipSpecialCheck
     ;LDA.W #$00D1
     ;STA.W WRAM7E_NewMusicEvent
     ;SkipSpecialCheck:
+    JSL.L CODE_ScanIncomingArchipelagoItems
     LDA.L WRAM_1POptionIndex
     STA.L WRAM_ModeIndex
     CLC
@@ -515,7 +527,7 @@ CODE_NewMainMenuState9:
     JSL.L CODE_8397A1_JSR
     LDA.L $7E96FD
     BEQ .End
-    STZ.W $1A70
+        STZ.W $1A70
     .End:
     RTL
 
@@ -567,6 +579,7 @@ PTR16_ArchipelagoActions:
     dw CODE_ArchipelagoORValue
     dw CODE_ArchipelagoMarkComplete
     dw CODE_ArchipelagoWriteReceivedCharacter
+    dw CODE_ArchipelagoAddScore
 CODE_ArchipelagoDoNothing:
     RTS
 ; Action Code 0003: play sound effect, set ID to arg, and prepare the reveal
@@ -615,6 +628,57 @@ CODE_ArchipelagoWriteReceivedCharacter:
     LDA.W #$004C
     STA.L WRAM7E_NewSoundEvent
     BRA CODE_ArchipelagoWriteReceivedItem
+; Action Code 0007: add chain or combo score
+CODE_ArchipelagoAddScore:
+    LDA.W WRAM7E_Score_Lo
+    STA.W WRAM7E_CheckpointScore_Lo
+    LDA.W WRAM7E_Score_Hi
+    STA.W WRAM7E_CheckpointScore_Hi
+    LDA.L SRAM_StageClearScore_Lo
+    STA.W WRAM7E_Score_Lo
+    LDA.L SRAM_StageClearScore_Hi
+    STA.W WRAM7E_Score_Hi
+    LDA.L SNI_ReceivedItemID
+    CMP.W #$010C
+    BCS .ComboScoring
+        LDA.W #$0041
+        STA.L WRAM7E_NewSoundEvent
+        LDA.L SNI_ReceivedItemID
+        SEC
+        SBC.W #$00FF
+        PHA
+        JSL.L CODE_82E2D6_JSR
+        LDA.W WRAM7E_Score_Lo
+        STA.L SRAM_StageClearScore_Lo
+        LDA.W WRAM7E_Score_Hi
+        STA.L SRAM_StageClearScore_Hi
+        LDA.W WRAM7E_CheckpointScore_Lo
+        STA.W WRAM7E_Score_Lo
+        LDA.W WRAM7E_CheckpointScore_Hi
+        STA.W WRAM7E_Score_Hi
+        PLA
+        JSL.L CODE_82E2D6_JSR
+        BRA .End
+    .ComboScoring:
+        LDA.W #$002B
+        STA.L WRAM7E_NewSoundEvent
+        LDA.L SNI_ReceivedItemID
+        SEC
+        SBC.W #$0108
+        PHA
+        JSL.L CODE_82E1AF_JSR
+        LDA.W WRAM7E_Score_Lo
+        STA.L SRAM_StageClearScore_Lo
+        LDA.W WRAM7E_Score_Hi
+        STA.L SRAM_StageClearScore_Hi
+        LDA.W WRAM7E_CheckpointScore_Lo
+        STA.W WRAM7E_Score_Lo
+        LDA.W WRAM7E_CheckpointScore_Hi
+        STA.W WRAM7E_Score_Hi
+        PLA
+        JSL.L CODE_82E1AF_JSR
+    .End:
+    BRL CODE_ArchipelagoWriteValue
 
 
 ;;;;;;;;;;;;

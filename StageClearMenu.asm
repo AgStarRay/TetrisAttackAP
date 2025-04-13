@@ -272,13 +272,17 @@ CODE_NewStageClearCustomSave:
     STZ.W $0340
     JSR.W CODE_SetLocalRoundClears
     STZ.W $0346
-    STZ.W $02C2
-    STZ.W $02C4
+    LDA.L SRAM_StageClearScore_Lo
+    STA.W WRAM7E_Score_Lo
+    STA.W WRAM7E_CheckpointScore_Lo
+    LDA.L SRAM_StageClearScore_Hi
+    STA.W WRAM7E_Score_Hi
+    STA.W WRAM7E_CheckpointScore_Hi
     LDA.W #$0001
     STA.L $7E9446
-    STZ.W WRAM83_IngameHours
-    STZ.W WRAM83_IngameMinutes
-    STZ.W WRAM83_IngameSeconds
+    STZ.W WRAM7E_IngameHours
+    STZ.W WRAM7E_IngameMinutes
+    STZ.W WRAM7E_IngameSeconds
     PLP
     RTL
 

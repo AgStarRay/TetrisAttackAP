@@ -4,7 +4,7 @@ from BaseClasses import Location
 from worlds.generic.Rules import CollectionRule
 from .Logic import stage_clear_round_clears_included, stage_clear_individual_clears_included, \
     round_clear_has_special, stage_clear_has_special, puzzle_individual_clears_included, puzzle_round_clears_included, \
-    goal_locations_included
+    goal_locations_included, normal_puzzle_set_included, secret_puzzle_set_included
 from .Options import StarterPack, PuzzleGoal, PuzzleInclusion
 
 if TYPE_CHECKING:
@@ -175,72 +175,72 @@ location_table: Dict[str, LocationData] = {
     "Puzzle 6-09 Clear": LocationData("Puzzle L6", PZ_STAGE_CLEAR, 0x299),
     "Puzzle 6-10 Clear": LocationData("Puzzle L6", PZ_STAGE_CLEAR, 0x29A),
     "Puzzle Round 6 Clear": LocationData("Puzzle L6", PZ_ROUND_CLEAR, 0x290),
-    "Secret Puzzle 1-01 Clear": LocationData("Secret Puzzle L1", SECRET_CLEAR, 0x29C),
-    "Secret Puzzle 1-02 Clear": LocationData("Secret Puzzle L1", SECRET_CLEAR, 0x29D),
-    "Secret Puzzle 1-03 Clear": LocationData("Secret Puzzle L1", SECRET_CLEAR, 0x29E),
-    "Secret Puzzle 1-04 Clear": LocationData("Secret Puzzle L1", SECRET_CLEAR, 0x29F),
-    "Secret Puzzle 1-05 Clear": LocationData("Secret Puzzle L1", SECRET_CLEAR, 0x2A0),
-    "Secret Puzzle 1-06 Clear": LocationData("Secret Puzzle L1", SECRET_CLEAR, 0x2A1),
-    "Secret Puzzle 1-07 Clear": LocationData("Secret Puzzle L1", SECRET_CLEAR, 0x2A2),
-    "Secret Puzzle 1-08 Clear": LocationData("Secret Puzzle L1", SECRET_CLEAR, 0x2A3),
-    "Secret Puzzle 1-09 Clear": LocationData("Secret Puzzle L1", SECRET_CLEAR, 0x2A4),
-    "Secret Puzzle 1-10 Clear": LocationData("Secret Puzzle L1", SECRET_CLEAR, 0x2A5),
-    "Secret Puzzle Round 1 Clear": LocationData("Secret Puzzle L1", SECRET_ROUND_CLEAR, 0x29B),
-    "Secret Puzzle 2-01 Clear": LocationData("Secret Puzzle L2", SECRET_CLEAR, 0x2A7),
-    "Secret Puzzle 2-02 Clear": LocationData("Secret Puzzle L2", SECRET_CLEAR, 0x2A8),
-    "Secret Puzzle 2-03 Clear": LocationData("Secret Puzzle L2", SECRET_CLEAR, 0x2A9),
-    "Secret Puzzle 2-04 Clear": LocationData("Secret Puzzle L2", SECRET_CLEAR, 0x2AA),
-    "Secret Puzzle 2-05 Clear": LocationData("Secret Puzzle L2", SECRET_CLEAR, 0x2AB),
-    "Secret Puzzle 2-06 Clear": LocationData("Secret Puzzle L2", SECRET_CLEAR, 0x2AC),
-    "Secret Puzzle 2-07 Clear": LocationData("Secret Puzzle L2", SECRET_CLEAR, 0x2AD),
-    "Secret Puzzle 2-08 Clear": LocationData("Secret Puzzle L2", SECRET_CLEAR, 0x2AE),
-    "Secret Puzzle 2-09 Clear": LocationData("Secret Puzzle L2", SECRET_CLEAR, 0x2AF),
-    "Secret Puzzle 2-10 Clear": LocationData("Secret Puzzle L2", SECRET_CLEAR, 0x2B0),
-    "Secret Puzzle Round 2 Clear": LocationData("Secret Puzzle L2", SECRET_ROUND_CLEAR, 0x2A6),
-    "Secret Puzzle 3-01 Clear": LocationData("Secret Puzzle L3", SECRET_CLEAR, 0x2B2),
-    "Secret Puzzle 3-02 Clear": LocationData("Secret Puzzle L3", SECRET_CLEAR, 0x2B3),
-    "Secret Puzzle 3-03 Clear": LocationData("Secret Puzzle L3", SECRET_CLEAR, 0x2B4),
-    "Secret Puzzle 3-04 Clear": LocationData("Secret Puzzle L3", SECRET_CLEAR, 0x2B5),
-    "Secret Puzzle 3-05 Clear": LocationData("Secret Puzzle L3", SECRET_CLEAR, 0x2B6),
-    "Secret Puzzle 3-06 Clear": LocationData("Secret Puzzle L3", SECRET_CLEAR, 0x2B7),
-    "Secret Puzzle 3-07 Clear": LocationData("Secret Puzzle L3", SECRET_CLEAR, 0x2B8),
-    "Secret Puzzle 3-08 Clear": LocationData("Secret Puzzle L3", SECRET_CLEAR, 0x2B9),
-    "Secret Puzzle 3-09 Clear": LocationData("Secret Puzzle L3", SECRET_CLEAR, 0x2BA),
-    "Secret Puzzle 3-10 Clear": LocationData("Secret Puzzle L3", SECRET_CLEAR, 0x2BB),
-    "Secret Puzzle Round 3 Clear": LocationData("Secret Puzzle L3", SECRET_ROUND_CLEAR, 0x2B1),
-    "Secret Puzzle 4-01 Clear": LocationData("Secret Puzzle L4", SECRET_CLEAR, 0x2BD),
-    "Secret Puzzle 4-02 Clear": LocationData("Secret Puzzle L4", SECRET_CLEAR, 0x2BE),
-    "Secret Puzzle 4-03 Clear": LocationData("Secret Puzzle L4", SECRET_CLEAR, 0x2BF),
-    "Secret Puzzle 4-04 Clear": LocationData("Secret Puzzle L4", SECRET_CLEAR, 0x2C0),
-    "Secret Puzzle 4-05 Clear": LocationData("Secret Puzzle L4", SECRET_CLEAR, 0x2C1),
-    "Secret Puzzle 4-06 Clear": LocationData("Secret Puzzle L4", SECRET_CLEAR, 0x2C2),
-    "Secret Puzzle 4-07 Clear": LocationData("Secret Puzzle L4", SECRET_CLEAR, 0x2C3),
-    "Secret Puzzle 4-08 Clear": LocationData("Secret Puzzle L4", SECRET_CLEAR, 0x2C4),
-    "Secret Puzzle 4-09 Clear": LocationData("Secret Puzzle L4", SECRET_CLEAR, 0x2C5),
-    "Secret Puzzle 4-10 Clear": LocationData("Secret Puzzle L4", SECRET_CLEAR, 0x2C6),
-    "Secret Puzzle Round 4 Clear": LocationData("Secret Puzzle L4", SECRET_ROUND_CLEAR, 0x2BC),
-    "Secret Puzzle 5-01 Clear": LocationData("Secret Puzzle L5", SECRET_CLEAR, 0x2C8),
-    "Secret Puzzle 5-02 Clear": LocationData("Secret Puzzle L5", SECRET_CLEAR, 0x2C9),
-    "Secret Puzzle 5-03 Clear": LocationData("Secret Puzzle L5", SECRET_CLEAR, 0x2CA),
-    "Secret Puzzle 5-04 Clear": LocationData("Secret Puzzle L5", SECRET_CLEAR, 0x2CB),
-    "Secret Puzzle 5-05 Clear": LocationData("Secret Puzzle L5", SECRET_CLEAR, 0x2CC),
-    "Secret Puzzle 5-06 Clear": LocationData("Secret Puzzle L5", SECRET_CLEAR, 0x2CD),
-    "Secret Puzzle 5-07 Clear": LocationData("Secret Puzzle L5", SECRET_CLEAR, 0x2CE),
-    "Secret Puzzle 5-08 Clear": LocationData("Secret Puzzle L5", SECRET_CLEAR, 0x2CF),
-    "Secret Puzzle 5-09 Clear": LocationData("Secret Puzzle L5", SECRET_CLEAR, 0x2D0),
-    "Secret Puzzle 5-10 Clear": LocationData("Secret Puzzle L5", SECRET_CLEAR, 0x2D1),
-    "Secret Puzzle Round 5 Clear": LocationData("Secret Puzzle L5", SECRET_ROUND_CLEAR, 0x2C7),
-    "Secret Puzzle 6-01 Clear": LocationData("Secret Puzzle L6", SECRET_CLEAR, 0x2D3),
-    "Secret Puzzle 6-02 Clear": LocationData("Secret Puzzle L6", SECRET_CLEAR, 0x2D4),
-    "Secret Puzzle 6-03 Clear": LocationData("Secret Puzzle L6", SECRET_CLEAR, 0x2D5),
-    "Secret Puzzle 6-04 Clear": LocationData("Secret Puzzle L6", SECRET_CLEAR, 0x2D6),
-    "Secret Puzzle 6-05 Clear": LocationData("Secret Puzzle L6", SECRET_CLEAR, 0x2D7),
-    "Secret Puzzle 6-06 Clear": LocationData("Secret Puzzle L6", SECRET_CLEAR, 0x2D8),
-    "Secret Puzzle 6-07 Clear": LocationData("Secret Puzzle L6", SECRET_CLEAR, 0x2D9),
-    "Secret Puzzle 6-08 Clear": LocationData("Secret Puzzle L6", SECRET_CLEAR, 0x2DA),
-    "Secret Puzzle 6-09 Clear": LocationData("Secret Puzzle L6", SECRET_CLEAR, 0x2DB),
-    "Secret Puzzle 6-10 Clear": LocationData("Secret Puzzle L6", SECRET_CLEAR, 0x2DC),
-    "Secret Puzzle Round 6 Clear": LocationData("Secret Puzzle L6", SECRET_ROUND_CLEAR, 0x2D2),
+    "Secret Puzzle 1-01 Clear": LocationData("Secret L1", SECRET_CLEAR, 0x29C),
+    "Secret Puzzle 1-02 Clear": LocationData("Secret L1", SECRET_CLEAR, 0x29D),
+    "Secret Puzzle 1-03 Clear": LocationData("Secret L1", SECRET_CLEAR, 0x29E),
+    "Secret Puzzle 1-04 Clear": LocationData("Secret L1", SECRET_CLEAR, 0x29F),
+    "Secret Puzzle 1-05 Clear": LocationData("Secret L1", SECRET_CLEAR, 0x2A0),
+    "Secret Puzzle 1-06 Clear": LocationData("Secret L1", SECRET_CLEAR, 0x2A1),
+    "Secret Puzzle 1-07 Clear": LocationData("Secret L1", SECRET_CLEAR, 0x2A2),
+    "Secret Puzzle 1-08 Clear": LocationData("Secret L1", SECRET_CLEAR, 0x2A3),
+    "Secret Puzzle 1-09 Clear": LocationData("Secret L1", SECRET_CLEAR, 0x2A4),
+    "Secret Puzzle 1-10 Clear": LocationData("Secret L1", SECRET_CLEAR, 0x2A5),
+    "Secret Puzzle Round 1 Clear": LocationData("Secret L1", SECRET_ROUND_CLEAR, 0x29B),
+    "Secret Puzzle 2-01 Clear": LocationData("Secret L2", SECRET_CLEAR, 0x2A7),
+    "Secret Puzzle 2-02 Clear": LocationData("Secret L2", SECRET_CLEAR, 0x2A8),
+    "Secret Puzzle 2-03 Clear": LocationData("Secret L2", SECRET_CLEAR, 0x2A9),
+    "Secret Puzzle 2-04 Clear": LocationData("Secret L2", SECRET_CLEAR, 0x2AA),
+    "Secret Puzzle 2-05 Clear": LocationData("Secret L2", SECRET_CLEAR, 0x2AB),
+    "Secret Puzzle 2-06 Clear": LocationData("Secret L2", SECRET_CLEAR, 0x2AC),
+    "Secret Puzzle 2-07 Clear": LocationData("Secret L2", SECRET_CLEAR, 0x2AD),
+    "Secret Puzzle 2-08 Clear": LocationData("Secret L2", SECRET_CLEAR, 0x2AE),
+    "Secret Puzzle 2-09 Clear": LocationData("Secret L2", SECRET_CLEAR, 0x2AF),
+    "Secret Puzzle 2-10 Clear": LocationData("Secret L2", SECRET_CLEAR, 0x2B0),
+    "Secret Puzzle Round 2 Clear": LocationData("Secret L2", SECRET_ROUND_CLEAR, 0x2A6),
+    "Secret Puzzle 3-01 Clear": LocationData("Secret L3", SECRET_CLEAR, 0x2B2),
+    "Secret Puzzle 3-02 Clear": LocationData("Secret L3", SECRET_CLEAR, 0x2B3),
+    "Secret Puzzle 3-03 Clear": LocationData("Secret L3", SECRET_CLEAR, 0x2B4),
+    "Secret Puzzle 3-04 Clear": LocationData("Secret L3", SECRET_CLEAR, 0x2B5),
+    "Secret Puzzle 3-05 Clear": LocationData("Secret L3", SECRET_CLEAR, 0x2B6),
+    "Secret Puzzle 3-06 Clear": LocationData("Secret L3", SECRET_CLEAR, 0x2B7),
+    "Secret Puzzle 3-07 Clear": LocationData("Secret L3", SECRET_CLEAR, 0x2B8),
+    "Secret Puzzle 3-08 Clear": LocationData("Secret L3", SECRET_CLEAR, 0x2B9),
+    "Secret Puzzle 3-09 Clear": LocationData("Secret L3", SECRET_CLEAR, 0x2BA),
+    "Secret Puzzle 3-10 Clear": LocationData("Secret L3", SECRET_CLEAR, 0x2BB),
+    "Secret Puzzle Round 3 Clear": LocationData("Secret L3", SECRET_ROUND_CLEAR, 0x2B1),
+    "Secret Puzzle 4-01 Clear": LocationData("Secret L4", SECRET_CLEAR, 0x2BD),
+    "Secret Puzzle 4-02 Clear": LocationData("Secret L4", SECRET_CLEAR, 0x2BE),
+    "Secret Puzzle 4-03 Clear": LocationData("Secret L4", SECRET_CLEAR, 0x2BF),
+    "Secret Puzzle 4-04 Clear": LocationData("Secret L4", SECRET_CLEAR, 0x2C0),
+    "Secret Puzzle 4-05 Clear": LocationData("Secret L4", SECRET_CLEAR, 0x2C1),
+    "Secret Puzzle 4-06 Clear": LocationData("Secret L4", SECRET_CLEAR, 0x2C2),
+    "Secret Puzzle 4-07 Clear": LocationData("Secret L4", SECRET_CLEAR, 0x2C3),
+    "Secret Puzzle 4-08 Clear": LocationData("Secret L4", SECRET_CLEAR, 0x2C4),
+    "Secret Puzzle 4-09 Clear": LocationData("Secret L4", SECRET_CLEAR, 0x2C5),
+    "Secret Puzzle 4-10 Clear": LocationData("Secret L4", SECRET_CLEAR, 0x2C6),
+    "Secret Puzzle Round 4 Clear": LocationData("Secret L4", SECRET_ROUND_CLEAR, 0x2BC),
+    "Secret Puzzle 5-01 Clear": LocationData("Secret L5", SECRET_CLEAR, 0x2C8),
+    "Secret Puzzle 5-02 Clear": LocationData("Secret L5", SECRET_CLEAR, 0x2C9),
+    "Secret Puzzle 5-03 Clear": LocationData("Secret L5", SECRET_CLEAR, 0x2CA),
+    "Secret Puzzle 5-04 Clear": LocationData("Secret L5", SECRET_CLEAR, 0x2CB),
+    "Secret Puzzle 5-05 Clear": LocationData("Secret L5", SECRET_CLEAR, 0x2CC),
+    "Secret Puzzle 5-06 Clear": LocationData("Secret L5", SECRET_CLEAR, 0x2CD),
+    "Secret Puzzle 5-07 Clear": LocationData("Secret L5", SECRET_CLEAR, 0x2CE),
+    "Secret Puzzle 5-08 Clear": LocationData("Secret L5", SECRET_CLEAR, 0x2CF),
+    "Secret Puzzle 5-09 Clear": LocationData("Secret L5", SECRET_CLEAR, 0x2D0),
+    "Secret Puzzle 5-10 Clear": LocationData("Secret L5", SECRET_CLEAR, 0x2D1),
+    "Secret Puzzle Round 5 Clear": LocationData("Secret L5", SECRET_ROUND_CLEAR, 0x2C7),
+    "Secret Puzzle 6-01 Clear": LocationData("Secret L6", SECRET_CLEAR, 0x2D3),
+    "Secret Puzzle 6-02 Clear": LocationData("Secret L6", SECRET_CLEAR, 0x2D4),
+    "Secret Puzzle 6-03 Clear": LocationData("Secret L6", SECRET_CLEAR, 0x2D5),
+    "Secret Puzzle 6-04 Clear": LocationData("Secret L6", SECRET_CLEAR, 0x2D6),
+    "Secret Puzzle 6-05 Clear": LocationData("Secret L6", SECRET_CLEAR, 0x2D7),
+    "Secret Puzzle 6-06 Clear": LocationData("Secret L6", SECRET_CLEAR, 0x2D8),
+    "Secret Puzzle 6-07 Clear": LocationData("Secret L6", SECRET_CLEAR, 0x2D9),
+    "Secret Puzzle 6-08 Clear": LocationData("Secret L6", SECRET_CLEAR, 0x2DA),
+    "Secret Puzzle 6-09 Clear": LocationData("Secret L6", SECRET_CLEAR, 0x2DB),
+    "Secret Puzzle 6-10 Clear": LocationData("Secret L6", SECRET_CLEAR, 0x2DC),
+    "Secret Puzzle Round 6 Clear": LocationData("Secret L6", SECRET_ROUND_CLEAR, 0x2D2),
 }
 
 
@@ -249,9 +249,10 @@ def get_locations(world: Optional["TetrisAttackWorld"]) -> Dict[str, LocationDat
     include_sc_round_clears = True
     include_sc_individual_clears = True
     exclude_sc_round_6_last_check = True
-    include_puzzle = True
     include_pz_round_clears = True
     include_pz_individual_clears = True
+    include_secret_round_clears = True
+    include_secret_individual_clears = True
     multiple_goals = True
     special_stage_trap_count = 1
     if world:
@@ -259,9 +260,14 @@ def get_locations(world: Optional["TetrisAttackWorld"]) -> Dict[str, LocationDat
         include_sc_round_clears = stage_clear_round_clears_included(world)
         include_sc_individual_clears = stage_clear_individual_clears_included(world)
         exclude_sc_round_6_last_check = world.options.starter_pack != StarterPack.option_stage_clear_round_6
-        include_puzzle = world.options.puzzle_goal != PuzzleGoal.option_no_puzzle or world.options.puzzle_inclusion != PuzzleInclusion.option_no_puzzle
-        include_pz_round_clears = puzzle_round_clears_included(world)
-        include_pz_individual_clears = puzzle_individual_clears_included(world)
+        include_normal_puzzles = normal_puzzle_set_included(world)
+        include_secret_puzzles = secret_puzzle_set_included(world)
+        puzzle_round_clears = puzzle_round_clears_included(world)
+        puzzle_individual_clears = puzzle_individual_clears_included(world)
+        include_pz_round_clears = puzzle_round_clears and include_normal_puzzles
+        include_pz_individual_clears = puzzle_individual_clears and include_normal_puzzles
+        include_secret_round_clears = puzzle_round_clears and include_secret_puzzles
+        include_secret_individual_clears = puzzle_individual_clears and include_secret_puzzles
         special_stage_trap_count = world.options.special_stage_trap_count
         multiple_goals = goal_locations_included(world)
 
@@ -282,6 +288,10 @@ def get_locations(world: Optional["TetrisAttackWorld"]) -> Dict[str, LocationDat
         included_classes.append(PZ_ROUND_CLEAR)
     if include_pz_individual_clears:
         included_classes.append(PZ_STAGE_CLEAR)
+    if include_secret_round_clears:
+        included_classes.append(SECRET_ROUND_CLEAR)
+    if include_secret_individual_clears:
+        included_classes.append(SECRET_CLEAR)
     if exclude_sc_round_6_last_check:
         if include_sc_round_clears:
             excluded_locations.add("Stage Clear Round 6 Clear")

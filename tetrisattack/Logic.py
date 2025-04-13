@@ -193,9 +193,14 @@ def stage_clear_has_special(round_index: int, stage_index: int, trap_count: int)
     return False
 
 
-def puzzle_round_completable(world: "TetrisAttackWorld", state: CollectionState, level_number: int):
+def puzzle_level_completable(world: "TetrisAttackWorld", state: CollectionState, level_number: int):
     if not puzzle_level_accessible(world, state, level_number):
         return False
+
+    base_name = "Puzzle"
+    if level_number > 6:
+        level_number -= 6
+        base_name = "Secret Puzzle"
 
     match world.options.puzzle_mode:
         case PuzzleMode.option_whole_levels:
@@ -203,19 +208,19 @@ def puzzle_round_completable(world: "TetrisAttackWorld", state: CollectionState,
         case PuzzleMode.option_individual_stages \
              | PuzzleMode.option_incremental \
              | PuzzleMode.option_incremental_with_level_gate:
-            return state.has(f"Puzzle Progressive Level {level_number} Unlock", world.player, 10)
+            return state.has(f"{base_name} Progressive Level {level_number} Unlock", world.player, 10)
         case PuzzleMode.option_skippable \
              | PuzzleMode.option_skippable_with_level_gate:
-            return (state.has(f"Puzzle {level_number}-01 Unlock", world.player)
-                    and state.has(f"Puzzle {level_number}-02 Unlock", world.player)
-                    and state.has(f"Puzzle {level_number}-03 Unlock", world.player)
-                    and state.has(f"Puzzle {level_number}-04 Unlock", world.player)
-                    and state.has(f"Puzzle {level_number}-05 Unlock", world.player)
-                    and state.has(f"Puzzle {level_number}-06 Unlock", world.player)
-                    and state.has(f"Puzzle {level_number}-07 Unlock", world.player)
-                    and state.has(f"Puzzle {level_number}-08 Unlock", world.player)
-                    and state.has(f"Puzzle {level_number}-09 Unlock", world.player)
-                    and state.has(f"Puzzle {level_number}-10 Unlock", world.player))
+            return (state.has(f"{base_name} {level_number}-01 Unlock", world.player)
+                    and state.has(f"{base_name} {level_number}-02 Unlock", world.player)
+                    and state.has(f"{base_name} {level_number}-03 Unlock", world.player)
+                    and state.has(f"{base_name} {level_number}-04 Unlock", world.player)
+                    and state.has(f"{base_name} {level_number}-05 Unlock", world.player)
+                    and state.has(f"{base_name} {level_number}-06 Unlock", world.player)
+                    and state.has(f"{base_name} {level_number}-07 Unlock", world.player)
+                    and state.has(f"{base_name} {level_number}-08 Unlock", world.player)
+                    and state.has(f"{base_name} {level_number}-09 Unlock", world.player)
+                    and state.has(f"{base_name} {level_number}-10 Unlock", world.player))
         case _:
             raise Exception(
                 f"Cannot determine round completion from Stage Clear mode {world.options.puzzle_mode}")
@@ -225,31 +230,41 @@ def puzzle_stage_completable(world: "TetrisAttackWorld", state, level_number: in
     if not puzzle_level_accessible(world, state, level_number):
         return False
 
+    base_name = "Puzzle"
+    if level_number > 6:
+        level_number -= 6
+        base_name = "Secret Puzzle"
+
     match world.options.puzzle_mode:
         case PuzzleMode.option_whole_levels \
              | PuzzleMode.option_individual_stages:
             return True
         case PuzzleMode.option_incremental \
              | PuzzleMode.option_incremental_with_level_gate:
-            return state.has(f"Puzzle Progressive Level {level_number} Unlock", world.player, stage_number)
+            return state.has(f"{base_name} Progressive Level {level_number} Unlock", world.player, stage_number)
         case PuzzleMode.option_skippable \
              | PuzzleMode.option_skippable_with_level_gate:
             if stage_number >= 10:
-                return state.has(f"Puzzle {level_number}-10 Unlock", world.player)
-            return state.has(f"Puzzle {level_number}-0{stage_number} Unlock", world.player)
+                return state.has(f"{base_name} {level_number}-10 Unlock", world.player)
+            return state.has(f"{base_name} {level_number}-0{stage_number} Unlock", world.player)
         case _:
             raise Exception(
                 f"Cannot determine stage completion from Puzzle mode {world.options.puzzle_mode}")
 
 
-def puzzle_level_accessible(world: "TetrisAttackWorld", state, round_number: int):
+def puzzle_level_accessible(world: "TetrisAttackWorld", state, level_number: int):
+    base_name = "Puzzle"
+    if level_number > 6:
+        level_number -= 6
+        base_name = "Secret Puzzle"
+
     match world.options.puzzle_mode:
         case PuzzleMode.option_whole_levels \
              | PuzzleMode.option_skippable_with_level_gate \
              | PuzzleMode.option_incremental_with_level_gate:
-            return state.has(f"Puzzle Level {round_number} Gate", world.player)
+            return state.has(f"{base_name} Level {level_number} Gate", world.player)
         case PuzzleMode.option_individual_stages:
-            return state.has(f"Puzzle Progressive Level {round_number} Unlock", world.player, 10)
+            return state.has(f"{base_name} Progressive Level {level_number} Unlock", world.player, 10)
         case PuzzleMode.option_incremental \
              | PuzzleMode.option_skippable:
             return True
@@ -351,7 +366,17 @@ def puzzle_level_gates_included(world: "TetrisAttackWorld"):
 
 
 def puzzle_able_to_win(world: "TetrisAttackWorld", state):
-    return puzzle_round_completable(world, state, 6)
+    match world.options.puzzle_goal:
+        case PuzzleGoal.option_puzzle:
+            return puzzle_level_completable(world, state, 6)
+        case PuzzleGoal.option_secret_puzzle:
+            return puzzle_level_completable(world, state, 12)
+        case PuzzleGoal.option_puzzle_and_secret_puzzle:
+            return puzzle_level_completable(world, state, 6) and puzzle_level_completable(world, state, 12)
+        case PuzzleGoal.option_puzzle_or_secret_puzzle:
+            return puzzle_level_completable(world, state, 6) or puzzle_level_completable(world, state, 12)
+        case _:
+            raise Exception(f"Cannot determine puzzle clearability from mode {world.options.puzzle_goal}")
 
 
 def goal_locations_included(world: "TetrisAttackWorld"):
@@ -370,6 +395,7 @@ def able_to_win(world: "TetrisAttackWorld", state):
         return False
     return True
 
+
 def get_starting_sc_round(world: "TetrisAttackWorld"):
     include_puzzle = world.options.puzzle_goal != PuzzleGoal.option_no_puzzle or world.options.puzzle_inclusion != PuzzleInclusion.option_no_puzzle
     starting_sc_round = world.options.starter_pack + 1
@@ -377,9 +403,28 @@ def get_starting_sc_round(world: "TetrisAttackWorld"):
         starting_sc_round = 1
     return starting_sc_round
 
-def get_starting_puzzle_level(world: "TetrisAttackWorld"):
+
+def get_starting_puzzle_level(world: "TetrisAttackWorld") -> int:
     include_stage_clear = world.options.stage_clear_goal or world.options.stage_clear_inclusion
     starting_puzzle_level = world.options.starter_pack + 1 - StarterPack.option_puzzle_level_1
     if starting_puzzle_level < 1 and not include_stage_clear:
         starting_puzzle_level = 1
+    if starting_puzzle_level > 0 and not normal_puzzle_set_included(world):
+        starting_puzzle_level += 6
     return starting_puzzle_level
+
+
+def normal_puzzle_set_included(world: "TetrisAttackWorld"):
+    return (world.options.puzzle_goal == PuzzleGoal.option_puzzle
+            or world.options.puzzle_goal == PuzzleGoal.option_puzzle_and_secret_puzzle
+            or world.options.puzzle_goal == PuzzleGoal.option_puzzle_or_secret_puzzle
+            or world.options.puzzle_inclusion == PuzzleInclusion.option_puzzle
+            or world.options.puzzle_inclusion == PuzzleInclusion.option_puzzle_and_secret_puzzle)
+
+
+def secret_puzzle_set_included(world: "TetrisAttackWorld"):
+    return (world.options.puzzle_goal == PuzzleGoal.option_secret_puzzle
+            or world.options.puzzle_goal == PuzzleGoal.option_puzzle_and_secret_puzzle
+            or world.options.puzzle_goal == PuzzleGoal.option_puzzle_or_secret_puzzle
+            or world.options.puzzle_inclusion == PuzzleInclusion.option_secret_puzzle
+            or world.options.puzzle_inclusion == PuzzleInclusion.option_puzzle_and_secret_puzzle)

@@ -56,6 +56,7 @@ ACTION_CODE_NOOP = 0
 ACTION_CODE_RECEIVED_ITEM = 2
 ACTION_CODE_LAST_STAGE = 3
 ACTION_CODE_MARK_COMPLETE = 5
+ACTION_CODE_RECEIVED_SCORE = 7
 
 STAGE_CLEAR_ROUND_6_CLEAR = SRAM_START + location_table["Stage Clear Round 6 Clear"].code
 STAGE_CLEAR_LAST_STAGE_UNLOCK = SRAM_START + item_table["Stage Clear Last Stage"].code
@@ -67,6 +68,8 @@ class TetrisAttackSNIClient(SNIClient):
     patch_suffix = ".aptatk"
     awaiting_deathlink_event = False
     currently_dead = False
+    all_goals = None
+    deathlink_hint = None
 
     async def validate_rom(self, ctx: "SNIContext") -> bool:
         from SNIClient import snes_read
@@ -92,21 +95,27 @@ class TetrisAttackSNIClient(SNIClient):
     async def game_watcher(self, ctx: "SNIContext") -> None:
         from SNIClient import snes_buffered_write, snes_flush_writes, snes_read
 
+        rom = await snes_read(ctx, TETRISATTACK_ROMHASH_START, ROMHASH_SIZE)
+        if rom != ctx.rom:
+            ctx.rom = None
+            self.all_goals = None
+            self.deathlink_hint = None
+            return
         sram_ready = await snes_read(ctx, SRAM_CHECK_FLAG, 0x1)
         if sram_ready is None or sram_ready[0] != 1:
             return
         game_state = await snes_read(ctx, GAME_STATE, 0x1)
         if game_state is None or game_state[0] not in VALID_GAME_STATES:
             return
-        rom = await snes_read(ctx, TETRISATTACK_ROMHASH_START, ROMHASH_SIZE)
-        if rom != ctx.rom:
-            ctx.rom = None
-            return
 
         # Initial conditions are good, let's interact
+        if self.all_goals is None:
+            self.all_goals = await snes_read(ctx, GOALS_POSITION, 0x3)
+        if self.deathlink_hint is None:
+            self.deathlink_hint = await snes_read(ctx, DEATHLINKHINT, 0x1)
+
         if "Deathlink" not in ctx.tags:
-            deathlink_hint = await snes_read(ctx, DEATHLINKHINT, 0x1)
-            if deathlink_hint is not None and deathlink_hint[0] != 0:
+            if self.deathlink_hint is not None and self.deathlink_hint[0] != 0:
                 await ctx.update_death_link(True)
 
         # Check if topped out or ran out of moves
@@ -147,11 +156,10 @@ class TetrisAttackSNIClient(SNIClient):
 
         # Look through goal checks
         if not ctx.finished_game:
-            all_goals = await snes_read(ctx, GOALS_POSITION, 0x3)
             goals_met = False
-            if all_goals is not None:
+            if self.all_goals is not None:
                 goals_met = True
-                if all_goals[0] != 0:
+                if self.all_goals[0] != 0:
                     sc_last_stage_clear = sram_bytes[
                         STAGECLEARLASTSTAGE_COMPLETED % SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET]
                     if sc_last_stage_clear is None or sc_last_stage_clear == 0:
@@ -161,25 +169,32 @@ class TetrisAttackSNIClient(SNIClient):
                             (STAGECLEARLASTSTAGE_COMPLETED + 0x101) % SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET]
                         if sc_last_stage_clear is None or sc_last_stage_clear == 0:
                             goals_met = False
-                if (all_goals[1] & 1) != 0:
+                puzzle_goaled = True
+                secret_goaled = True
+                if (self.all_goals[1] & 1) != 0:
                     pz_6_10_clear = sram_bytes[PUZZLEL6_COMPLETED % SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET]
                     if pz_6_10_clear is None or pz_6_10_clear == 0:
-                        goals_met = False
+                        puzzle_goaled = False
                     else:
                         pz_6_10_clear = sram_bytes[
                             (PUZZLEL6_COMPLETED + 0x101) % SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET]
                         if pz_6_10_clear is None or pz_6_10_clear == 0:
-                            goals_met = False
-                if (all_goals[1] & 2) != 0:
+                            puzzle_goaled = False
+                if (self.all_goals[1] & 2) != 0:
                     pz_s_6_10_clear = sram_bytes[SECRETPUZZLEL6_COMPLETED % SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET]
                     if pz_s_6_10_clear is None or pz_s_6_10_clear == 0:
-                        goals_met = False
+                        secret_goaled = False
                     else:
                         pz_s_6_10_clear = sram_bytes[
                             (SECRETPUZZLEL6_COMPLETED + 0x101) % SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET]
                         if pz_s_6_10_clear is None or pz_s_6_10_clear == 0:
-                            goals_met = False
-                if all_goals[2] != 0:
+                            secret_goaled = False
+                if (self.all_goals[1] & 4) != 0:  # Flag for one goal being enough
+                    if not puzzle_goaled and not secret_goaled:
+                        goals_met = False
+                elif not puzzle_goaled or not secret_goaled:
+                    goals_met = False
+                if self.all_goals[2] != 0:
                     # TODO: Implement Vs goal
                     goals_met = False
             if goals_met:
@@ -248,6 +263,10 @@ class TetrisAttackSNIClient(SNIClient):
                     snes_buffered_write(ctx, RECEIVED_ITEM_ID, pack("H", item.item))
                     snes_buffered_write(ctx, RECEIVED_ITEM_ARG, pack("H", progressive_count))
                     action_code = ACTION_CODE_RECEIVED_ITEM
+                    if item.item == 0x10E or item.item == 0x111:
+                        pass
+                    elif 0x100 <= item.item <= 0x125:
+                        action_code = ACTION_CODE_RECEIVED_SCORE
                     break
                 else:
                     logging.info("Already have %s (%d/%d in list)" % (

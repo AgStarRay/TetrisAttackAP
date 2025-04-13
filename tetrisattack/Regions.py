@@ -29,22 +29,31 @@ def init_areas(world: "TetrisAttackWorld", locations: Dict[str, LocationData]) -
         create_region(world, player, locations_per_region, "Puzzle L4"),
         create_region(world, player, locations_per_region, "Puzzle L5"),
         create_region(world, player, locations_per_region, "Puzzle L6"),
+        create_region(world, player, locations_per_region, "Secret L1"),
+        create_region(world, player, locations_per_region, "Secret L2"),
+        create_region(world, player, locations_per_region, "Secret L3"),
+        create_region(world, player, locations_per_region, "Secret L4"),
+        create_region(world, player, locations_per_region, "Secret L5"),
+        create_region(world, player, locations_per_region, "Secret L6"),
     ]
 
     multiworld.regions += regions
 
     menu = multiworld.get_region("Menu", player)
     stage_clear_region = multiworld.get_region("Stage Clear", player)
-    menu.connect(stage_clear_region, "Start Stage Clear")
+    menu.connect(stage_clear_region, "Select Stage Clear")
     puzzle_region = multiworld.get_region("Puzzle", player)
-    menu.connect(puzzle_region, "Start Puzzle")
+    menu.connect(puzzle_region, "Select Puzzle")
     for x in range(1, 7):
         round_region = multiworld.get_region(f"SC Round {x}", player)
-        stage_clear_region.connect(round_region, f"Round {x} Selection",
+        stage_clear_region.connect(round_region, f"Select Round {x}",
                                    lambda state, n=x: stage_clear_round_accessible(world, state, n))
         level_region = multiworld.get_region(f"Puzzle L{x}", player)
-        puzzle_region.connect(level_region, f"Puzzle L{x} Selection",
+        puzzle_region.connect(level_region, f"Select Puzzle L{x}",
                                    lambda state, n=x: puzzle_level_accessible(world, state, n))
+        level_region = multiworld.get_region(f"Secret L{x}", player)
+        puzzle_region.connect(level_region, f"Select Secret Puzzle L{x}",
+                                   lambda state, n=x + 6: puzzle_level_accessible(world, state, n))
 
 
 def create_location(player: int, name: str, location_data: LocationData, region: Region) -> Location:

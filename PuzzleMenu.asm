@@ -18,6 +18,41 @@ CODE_ArchipelagoPuzzleMenu:
     print "New puzzle submenu state 3 procedure 0 at ",pc
     JSL.L CODE_SRAMValidation
     JSL.L CODE_ScanIncomingArchipelagoItems
+    LDA.L DATA8_PuzzleFlags
+    BIT.W #%0100
+    BEQ .SkipSwitchLogic
+    BIT.W #%1000
+    BEQ .SkipSwitchLogic ; Both puzzle sets have to be available
+        LDA.L SRAM_PrintedSwitchMessage
+        BNE .SkipPrint ; Only need to print once
+            LDA.W #$0001
+            STA.L SRAM_PrintedSwitchMessage
+            PHB
+            PHK
+            PLB
+            LDA.W WRAM7E_PuzzleSecretFlag
+            BEQ .SecretMessage
+                LDY.W #DATA_NormalMessageVRAMDMA
+                BRA .EndMessageSelection
+            .SecretMessage:
+                LDY.W #DATA_SecretMessageVRAMDMA
+            .EndMessageSelection:
+            JSL.L CODE_CreateVRAMDMA
+            PLB
+        .SkipPrint:
+        LDA.W WRAM7E_Pad1Press
+        BIT.W #$4040 ; X or Y
+        BEQ .SkipSwitchLogic
+            LDA.W #$0001
+            STA.W WRAM7E_NewSoundEvent
+            LDA.W #$0000
+            STA.L SRAM_PrintedSwitchMessage
+            LDA.W WRAM7E_PuzzleSecretFlag
+            EOR.W #$0001
+            STA.W WRAM7E_PuzzleSecretFlag
+            LDA.W #$0028
+            JSL.L CODE_83A9E3_JSR
+    .SkipSwitchLogic:
     LDA.W #$0005
     STA.L WRAM_PuzzleClearedLevels
     STZ.W WRAM7E_PuzzleClearIndex
@@ -300,8 +335,18 @@ DATA16_MenuPZSpritePositions:
 CODE_NewPuzzleCustomSave:
     PHP
     REP #$20
+    LDA.L DATA8_PuzzleFlags
+    BIT.W #%0100
+    BNE .NormalAccessible
+    BIT.W #%1000
+    BEQ .NormalAccessible
+        LDA.W #$0001
+        STA.W WRAM7E_PuzzleSecretFlag
+        BRA .EndSecretFlag
+    .NormalAccessible:
+        STZ.W WRAM7E_PuzzleSecretFlag
+    .EndSecretFlag:
     STZ.W WRAM7E_PuzzleClearIndex
-    STZ.W WRAM7E_PuzzleSecretFlag
     STZ.W WRAM7E_PuzzleStageIndex
     LDA.W #$0001
     STA.W WRAM7E_PuzzleIndex
@@ -317,6 +362,7 @@ CODE_MenuPZState2CustomCode9:
     LDA.W #$0003
     STA.W WRAM7E_GameSubstate
     LDA.W #$0000
+    STA.L SRAM_PrintedSwitchMessage
     STA.W WRAM7E_MenuProcedure
     STA.L $7E961C
     PHK
@@ -331,6 +377,7 @@ CODE_MenuPZState2CustomCode10:
     BNE .Jump1
     INC.W WRAM7E_GameSubstate
     LDA.W #$0000
+    STA.L SRAM_PrintedSwitchMessage
     STA.W WRAM7E_MenuProcedure
     STA.L $7E9973
     BRA .Jump2
@@ -345,3 +392,31 @@ CODE_MenuPZState2CustomCode10:
     JSL.L CODE_CreateVRAMDMA
     PLB
     JML.L CODE_83EBBF
+
+DATA_SecretControlVRAMData:
+    dw $038D,$038E,$0391,$038C,$0380,$038B,$0000,$0000
+    dw $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+    dw $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+    dw $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+    dw $0397,$039D,$038E,$0391,$039D,$0398,$039D,$0385
+    dw $038E,$0391,$039D,$0392,$0384,$0382,$0391,$0384,$0393
+
+DATA_SecretMessageVRAMDMA:
+    dl DATA_SecretControlVRAMData
+    dw $0062
+    db $80
+    dw $6A87
+
+DATA_NormalControlVRAMData:
+    dw $0392,$0384,$0382,$0391,$0384,$0393,$0000,$0000
+    dw $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+    dw $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+    dw $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+    dw $0397,$039D,$038E,$0391,$039D,$0398,$039D,$0385
+    dw $038E,$0391,$039D,$038D,$038E,$0391,$038C,$0380,$038B
+
+DATA_NormalMessageVRAMDMA:
+    dl DATA_NormalControlVRAMData
+    dw $0062
+    db $80
+    dw $6A87
