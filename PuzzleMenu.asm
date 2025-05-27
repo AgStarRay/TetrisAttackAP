@@ -16,6 +16,7 @@ DATA16_A1_PuzzleSecretUnlockOffsets:
 
 CODE_ArchipelagoPuzzleMenu:
     print "New puzzle submenu state 3 procedure 0 at ",pc
+    ;TODO: AP and lock sprites are not loaded when returning from a puzzle
     JSL.L CODE_SRAMValidation
     JSL.L CODE_ScanIncomingArchipelagoItems
     LDA.L DATA8_PuzzleFlags
@@ -23,10 +24,10 @@ CODE_ArchipelagoPuzzleMenu:
     BEQ .SkipSwitchLogic
     BIT.W #%1000
     BEQ .SkipSwitchLogic ; Both puzzle sets have to be available
-        LDA.L SRAM_PrintedSwitchMessage
+        LDA.L WRAM_PrintedSwitchMessage
         BNE .SkipPrint ; Only need to print once
             LDA.W #$0001
-            STA.L SRAM_PrintedSwitchMessage
+            STA.L WRAM_PrintedSwitchMessage
             PHB
             PHK
             PLB
@@ -46,7 +47,7 @@ CODE_ArchipelagoPuzzleMenu:
             LDA.W #$0001
             STA.W WRAM7E_NewSoundEvent
             LDA.W #$0000
-            STA.L SRAM_PrintedSwitchMessage
+            STA.L WRAM_PrintedSwitchMessage
             LDA.W WRAM7E_PuzzleSecretFlag
             EOR.W #$0001
             STA.W WRAM7E_PuzzleSecretFlag
@@ -65,12 +66,12 @@ CODE_ArchipelagoPuzzleMenu:
         .Jump1:
             LDA.W #$0000
             STA.L $7E9973
-            LDA.W $02BA
+            LDA.W WRAM7E_CharacterIndex1
             JSL.L CODE_83B0AC_JSR
             BRL .Jump8
     .NotScrolling:
 
-    LDA.W WRAM7E_PuzzleLevelIndex
+    LDA.W WRAM7E_CharacterIndex1
     ASL A
     TAX
     LDA.W WRAM7E_PuzzleSecretFlag
@@ -86,7 +87,7 @@ CODE_ArchipelagoPuzzleMenu:
     LDY.W WRAM7E_OAMAppendAddr
     LDA.W #$0000
     .MenuPZCustomGraphicsLoop:
-        STA.L SRAM_LoopCounter
+        STA.L WRAM_LoopCounter
         LDA.L SRAM_PuzzleLevel1Unlocks,X
         AND.W #$00FF
         BNE .SkipLockSprite
@@ -95,9 +96,9 @@ CODE_ArchipelagoPuzzleMenu:
             INY
             INY
             PHX
-            LDA.L SRAM_LoopCounter
+            LDA.L WRAM_LoopCounter
             TAX
-            LDA.L SRAM_LockSpriteValues,X
+            LDA.L WRAM_LockSpriteValues,X
             AND.W #$00FF
             BEQ .UseNormalLockSprite
                 LDA.W #GFX_LockSpriteHighlighted
@@ -113,37 +114,23 @@ CODE_ArchipelagoPuzzleMenu:
         .SkipLockSprite:
         LDA.L DATA8_PuzzleLevel1Checks,X
         AND.W #$00FF
-        STA.L SRAM_CheckComparisonTemp
+        STA.L WRAM_CheckComparisonTemp
         LDA.L SRAM_PuzzleLevel1Clears,X
         AND.W #$00FF
-        CMP.L SRAM_CheckComparisonTemp
+        CMP.L WRAM_CheckComparisonTemp
         BCS .SkipAPSprite
-            JSR.W CODE_MenuPZCalculateSpritePos
-            STA.W WRAM7E_OAMBuffer,Y
-            INY
-            INY
-            LDA.W #GFX_APSprite
-            STA.W WRAM7E_OAMBuffer,Y
-            INY
-            INY
+            %append_sprite_sub(CODE_MenuPZCalculateSpritePos, GFX_APSprite)
             BRA .NextSlot
         .SkipAPSprite:
         LDA.L SRAM_PuzzleLevel1Clears,X
         BIT.W #$0040
         BEQ .SkipClearSprite
-            JSR.W CODE_MenuPZCalculateSpritePos
-            STA.W WRAM7E_OAMBuffer,Y
-            INY
-            INY
-            LDA.W #GFX_StageClearSprite
-            STA.W WRAM7E_OAMBuffer,Y
-            INY
-            INY
+            %append_sprite_sub(CODE_MenuPZCalculateSpritePos, GFX_StageClearSprite)
             BRA .NextSlot
         .SkipClearSprite:
         .NextSlot:
         INX
-        LDA.L SRAM_LoopCounter
+        LDA.L WRAM_LoopCounter
         INC A
         CMP.W #$000B
         BCS .MenuPZCustomGraphics_End
@@ -189,12 +176,12 @@ CODE_ArchipelagoPuzzleMenu:
     BEQ .SkipUnhighlightLocks
     .UnhighlightLocks:
         LDA.W #$0000
-        STA.L SRAM_LockSpriteValues
-        STA.L SRAM_LockSpriteValues+2
-        STA.L SRAM_LockSpriteValues+4
-        STA.L SRAM_LockSpriteValues+6
-        STA.L SRAM_LockSpriteValues+8
-        STA.L SRAM_LockSpriteValues+10
+        STA.L WRAM_LockSpriteValues
+        STA.L WRAM_LockSpriteValues+2
+        STA.L WRAM_LockSpriteValues+4
+        STA.L WRAM_LockSpriteValues+6
+        STA.L WRAM_LockSpriteValues+8
+        STA.L WRAM_LockSpriteValues+10
     .SkipUnhighlightLocks:
     LDA.B WRAM00_Pad1Press
     BIT.W #$1080
@@ -228,7 +215,7 @@ CODE_ArchipelagoPuzzleMenu:
         LDA.W #$0004
         STA.W WRAM7E_GameSubstate
         STA.W WRAM7E_NewSoundEvent
-        LDA.W $02BA
+        LDA.W WRAM7E_CharacterIndex1
         JSL.L CODE_83B0B5_JSR
     .Jump8:
     LDA.L $7E9973
@@ -240,7 +227,7 @@ CODE_ArchipelagoPuzzleMenu:
 
 CODE_MenuPZCalculateSpritePos:
     PHX
-    LDA.L SRAM_LoopCounter
+    LDA.L WRAM_LoopCounter
     ASL A
     TAX
     LDA.L DATA16_MenuPZSpritePositions,X
@@ -251,7 +238,7 @@ CODE_CheckIfPuzzleLevelIsOpen:
     PHB
     PHK
     PLB
-    LDA.W WRAM7E_PuzzleLevelIndex
+    LDA.W WRAM7E_CharacterIndex1
     ASL A
     TAX
     LDA.W WRAM7E_PuzzleSecretFlag
@@ -302,16 +289,16 @@ CODE_CheckIfPuzzleLevelIsOpen:
         RTS
 CODE_HighlightPuzzleLockSprites:
     LDA.W #$0001
-    STA.L SRAM_LockSpriteValues
+    STA.L WRAM_LockSpriteValues
     LDA.L DATA8_PuzzleFlags
     BIT.W #$0001
     BNE .JustTheCurrentLock
         LDA.W #$0101
-        STA.L SRAM_LockSpriteValues+1
-        STA.L SRAM_LockSpriteValues+3
-        STA.L SRAM_LockSpriteValues+5
-        STA.L SRAM_LockSpriteValues+7
-        STA.L SRAM_LockSpriteValues+9
+        STA.L WRAM_LockSpriteValues+1
+        STA.L WRAM_LockSpriteValues+3
+        STA.L WRAM_LockSpriteValues+5
+        STA.L WRAM_LockSpriteValues+7
+        STA.L WRAM_LockSpriteValues+9
         RTS
     .JustTheCurrentLock:
     LDA.L WRAM_MenuCursorY
@@ -325,12 +312,67 @@ CODE_HighlightPuzzleLockSprites:
     .UseRowIndex:
     TAX
     LDA.W #$0001
-    STA.L SRAM_LockSpriteValues+1,X
+    STA.L WRAM_LockSpriteValues+1,X
     RTS
 DATA16_MenuPZSpritePositions:
     dw $63A6
     dw $7580,$7588,$7590,$7598,$75A0
     dw $8580,$8588,$8590,$8598,$85A0
+
+CODE_DisplayPZTracker:
+    LDA.W #$1069
+    STA.L $7E228E
+    LDA.W #$1073
+    STA.L $7E2290
+    LDA.W #$0015
+    LDX.W #DATA16_PZTrackerLine2
+    LDY.W #$22CE
+    ;MVN $7E,bank(DATA16_PZTrackerLine2)
+    LDA.W #$0017
+    LDX.W #DATA16_PZTrackerLine3NonExtra
+    LDY.W #$230E
+    MVN $7E,bank(DATA16_PZTrackerLine3Extra)
+
+    ; Count total checks completed
+    LDA.W #LOC_PuzzleChecksStart
+    STA.B $00
+    LDA.W #LOC_PuzzleClearsStart
+    STA.B $02
+    LDA.W #(LOC_PuzzleChecksEnd-LOC_PuzzleChecksStart)
+    STA.B $04
+    STZ.B $06
+    JSL.L CODE_CountCompletedChecks
+    LDA.B $06
+    JSL.L CODE_16BitHexToDec
+    LDA.W $0374
+    ORA.W #$0450
+    STA.L $7E2298
+    LDA.W $0376
+    ORA.W #$0450
+    STA.L $7E229A
+    LDA.W $0378
+    ORA.W #$0450
+    STA.L $7E229C
+    LDA.L DATA16_PuzzleTotalChecks
+    JSL.L CODE_16BitHexToDec
+    LDA.W $0374
+    ORA.W #$0450
+    STA.L $7E22A0
+    LDA.W $0376
+    ORA.W #$0450
+    STA.L $7E22A2
+    LDA.W $0378
+    ORA.W #$0450
+    STA.L $7E22A4
+
+    ; TODO: Implement tracker
+    RTS
+DATA16_PZTrackerLine2:
+    dw $0451,$040E,$0452,$040E,$0453,$040E,$0454,$040E,$0455,$040E,$0456
+DATA16_PZTrackerLine3NonExtra:
+    dw $040E,$040E,$040E,$040E,$040E,$040E,$040E,$040E,$040E,$040E,$040E,$040E
+DATA16_PZTrackerLine3Extra:
+    dw $045E,$040E,$045E,$040E,$045E,$040E,$045E,$040E,$045E,$040E,$045E,$040E
 
 CODE_NewPuzzleCustomSave:
     PHP
@@ -358,26 +400,19 @@ CODE_NewPuzzleCustomSave:
     RTL
     
 CODE_MenuPZState2CustomCode9:
-    PHB
     LDA.W #$0003
     STA.W WRAM7E_GameSubstate
     LDA.W #$0000
-    STA.L SRAM_PrintedSwitchMessage
+    STA.L WRAM_PrintedSwitchMessage
     STA.W WRAM7E_MenuProcedure
     STA.L $7E961C
-    PHK
-    PLB
-    LDY.W #DATA_CustomGraphicsVRAMDMA
-    JSL.L CODE_CreateVRAMDMA
-    PLB
     JML.L CODE_83ED28
 CODE_MenuPZState2CustomCode10:
-    PHB
     LDA.L $7E9618
     BNE .Jump1
     INC.W WRAM7E_GameSubstate
     LDA.W #$0000
-    STA.L SRAM_PrintedSwitchMessage
+    STA.L WRAM_PrintedSwitchMessage
     STA.W WRAM7E_MenuProcedure
     STA.L $7E9973
     BRA .Jump2
@@ -386,11 +421,6 @@ CODE_MenuPZState2CustomCode10:
     LDA.W #$0018
     STA.L $7E9987
     .Jump2:
-    PHK
-    PLB
-    LDY.W #DATA_CustomGraphicsVRAMDMA
-    JSL.L CODE_CreateVRAMDMA
-    PLB
     JML.L CODE_83EBBF
 
 DATA_SecretControlVRAMData:
@@ -399,7 +429,7 @@ DATA_SecretControlVRAMData:
     dw $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
     dw $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
     dw $0397,$039D,$038E,$0391,$039D,$0398,$039D,$0385
-    dw $038E,$0391,$039D,$0392,$0384,$0382,$0391,$0384,$0393
+    dw $038E,$0391,$039D,$0384,$0397,$0393,$0391,$0380,$0000
 
 DATA_SecretMessageVRAMDMA:
     dl DATA_SecretControlVRAMData
@@ -408,7 +438,7 @@ DATA_SecretMessageVRAMDMA:
     dw $6A87
 
 DATA_NormalControlVRAMData:
-    dw $0392,$0384,$0382,$0391,$0384,$0393,$0000,$0000
+    dw $0384,$0397,$0393,$0391,$0380,$0000,$0000,$0000
     dw $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
     dw $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
     dw $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000

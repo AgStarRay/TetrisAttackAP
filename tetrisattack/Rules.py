@@ -3,8 +3,10 @@ from typing import TYPE_CHECKING
 
 from .Locations import TetrisAttackLocation
 from .Logic import stage_clear_round_clears_included, stage_clear_round_completable, stage_clear_stage_completable, \
-    able_to_win, puzzle_level_completable, puzzle_stage_completable, puzzle_able_to_win, stage_clear_able_to_win
-from .Options import StarterPack, PuzzleGoal
+    able_to_win, puzzle_level_completable, puzzle_stage_completable, versus_stage_completable, \
+    stage_clear_able_to_win, puzzle_able_to_win, versus_able_to_win
+from .Options import StarterPack, PuzzleGoal, VersusGoal
+from .data.Constants import versus_stage_names, versus_free_names
 
 if TYPE_CHECKING:
     from . import TetrisAttackWorld
@@ -31,17 +33,36 @@ def set_puzzle_rules(world: "TetrisAttackWorld") -> None:
     for level_number in range(1, 7):
         try_set_rule(world, f"Puzzle Round {level_number} Clear",
                      lambda state, l=level_number: puzzle_level_completable(world, state, l))
-        try_set_rule(world, f"Secret Puzzle Round {level_number} Clear",
+        try_set_rule(world, f"Extra Puzzle Round {level_number} Clear",
                      lambda state, l=level_number + 6: puzzle_level_completable(world, state, l))
         for stage_number in range(1, 10):
             try_set_rule(world, f"Puzzle {level_number}-0{stage_number} Clear",
                          lambda state, l=level_number, s=stage_number: puzzle_stage_completable(world, state, l, s))
-            try_set_rule(world, f"Secret Puzzle {level_number}-0{stage_number} Clear",
+            try_set_rule(world, f"Extra Puzzle {level_number}-0{stage_number} Clear",
                          lambda state, l=level_number + 6, s=stage_number: puzzle_stage_completable(world, state, l, s))
         try_set_rule(world, f"Puzzle {level_number}-10 Clear",
                      lambda state, l=level_number: puzzle_stage_completable(world, state, l, 10))
-        try_set_rule(world, f"Secret Puzzle {level_number}-10 Clear",
+        try_set_rule(world, f"Extra Puzzle {level_number}-10 Clear",
                      lambda state, l=level_number + 6: puzzle_stage_completable(world, state, l, 10))
+
+
+def set_versus_rules(world: "TetrisAttackWorld") -> None:
+    difficulty = 0
+    for stage_number in range(1, 13):
+        try_set_rule(world, versus_stage_names[stage_number - 1],
+                     lambda state, s=stage_number: versus_stage_completable(world, state, s, difficulty))
+        if stage_number <= 8:
+            try_set_rule(world, versus_free_names[stage_number - 1],
+                         lambda state, s=stage_number: versus_stage_completable(world, state, s, difficulty))
+    try_set_rule(world, "All Friends Normal Again",
+                 lambda state: (versus_stage_completable(world, state, 1, difficulty)
+                                and versus_stage_completable(world, state, 2, difficulty)
+                                and versus_stage_completable(world, state, 3, difficulty)
+                                and versus_stage_completable(world, state, 4, difficulty)
+                                and versus_stage_completable(world, state, 5, difficulty)
+                                and versus_stage_completable(world, state, 6, difficulty)
+                                and versus_stage_completable(world, state, 7, difficulty)
+                                and versus_stage_completable(world, state, 8, difficulty)))
 
 
 def set_goal_rules(world: "TetrisAttackWorld") -> None:
@@ -63,6 +84,11 @@ def set_goal_rules(world: "TetrisAttackWorld") -> None:
         pz_completion_loc = TetrisAttackLocation(player, "Puzzle Completion")
         pz_completion_loc.place_locked_item(world.create_event("Puzzle Completion"))
         set_rule(pz_completion_loc, lambda state: puzzle_able_to_win(world, state))
+
+    if world.options.versus_goal != VersusGoal.option_no_vs:
+        vs_completion_loc = TetrisAttackLocation(player, "Versus Completion")
+        vs_completion_loc.place_locked_item(world.create_event("Versus Completion"))
+        set_rule(vs_completion_loc, lambda state: versus_able_to_win(world, state))
 
     world.multiworld.completion_condition[world.player] = lambda state: able_to_win(world, state)
 

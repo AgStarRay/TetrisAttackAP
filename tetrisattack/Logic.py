@@ -1,7 +1,9 @@
 ﻿from typing import TYPE_CHECKING
 
 from BaseClasses import CollectionState
-from .Options import StarterPack, StageClearMode, PuzzleMode, PuzzleGoal, PuzzleInclusion
+from .Options import StarterPack, StageClearMode, PuzzleMode, PuzzleGoal, PuzzleInclusion, VersusGoal, VersusInclusion, \
+    VersusMode
+from .data.Constants import versus_unlock_names
 
 if TYPE_CHECKING:
     from . import TetrisAttackWorld
@@ -200,7 +202,7 @@ def puzzle_level_completable(world: "TetrisAttackWorld", state: CollectionState,
     base_name = "Puzzle"
     if level_number > 6:
         level_number -= 6
-        base_name = "Secret Puzzle"
+        base_name = "Extra Puzzle"
 
     match world.options.puzzle_mode:
         case PuzzleMode.option_whole_levels:
@@ -233,7 +235,7 @@ def puzzle_stage_completable(world: "TetrisAttackWorld", state, level_number: in
     base_name = "Puzzle"
     if level_number > 6:
         level_number -= 6
-        base_name = "Secret Puzzle"
+        base_name = "Extra Puzzle"
 
     match world.options.puzzle_mode:
         case PuzzleMode.option_whole_levels \
@@ -256,7 +258,7 @@ def puzzle_level_accessible(world: "TetrisAttackWorld", state, level_number: int
     base_name = "Puzzle"
     if level_number > 6:
         level_number -= 6
-        base_name = "Secret Puzzle"
+        base_name = "Extra Puzzle"
 
     match world.options.puzzle_mode:
         case PuzzleMode.option_whole_levels \
@@ -369,14 +371,57 @@ def puzzle_able_to_win(world: "TetrisAttackWorld", state):
     match world.options.puzzle_goal:
         case PuzzleGoal.option_puzzle:
             return puzzle_level_completable(world, state, 6)
-        case PuzzleGoal.option_secret_puzzle:
+        case PuzzleGoal.option_extra_puzzle:
             return puzzle_level_completable(world, state, 12)
-        case PuzzleGoal.option_puzzle_and_secret_puzzle:
+        case PuzzleGoal.option_puzzle_and_extra_puzzle:
             return puzzle_level_completable(world, state, 6) and puzzle_level_completable(world, state, 12)
-        case PuzzleGoal.option_puzzle_or_secret_puzzle:
+        case PuzzleGoal.option_puzzle_or_extra_puzzle:
             return puzzle_level_completable(world, state, 6) or puzzle_level_completable(world, state, 12)
         case _:
-            raise Exception(f"Cannot determine puzzle clearability from mode {world.options.puzzle_goal}")
+            raise Exception(f"Cannot determine puzzle clearability from goal {world.options.puzzle_goal}")
+
+
+def versus_progressive_unlocks_included(world: "TetrisAttackWorld"):
+    if world.options.versus_goal == VersusGoal.option_no_vs and not world.options.versus_inclusion:
+        return False
+    return world.options.versus_mode == VersusMode.option_minimum_progressive or world.options.versus_mode == VersusMode.option_goal_progressive
+
+
+def versus_individual_unlocks_included(world: "TetrisAttackWorld"):
+    if world.options.versus_goal == VersusGoal.option_no_vs and not world.options.versus_inclusion:
+        return False
+    return world.options.versus_mode == VersusMode.option_minimum_difficulty or world.options.versus_mode == VersusMode.option_goal_difficulty
+
+
+def versus_stage_completable(world: "TetrisAttackWorld", state, stage_number: int, difficulty_level: int):
+    if stage_number > 8 and not cave_of_wickedness_accessible(world, state):
+        return False
+    return state.has("Vs. Progressive Stage Unlock", world.player, stage_number) or state.has(
+        versus_unlock_names[stage_number - 1], world.player)
+
+
+def cave_of_wickedness_accessible(world: "TetrisAttackWorld", state):
+    return state.has("Mt. Wickedness Gate", world.player)
+
+
+def versus_able_to_win(world: "TetrisAttackWorld", state):
+    match world.options.versus_goal:
+        case VersusGoal.option_easy:
+            return versus_stage_completable(world, state, 10, 1)
+        case VersusGoal.option_normal:
+            return versus_stage_completable(world, state, 11, 2)
+        case VersusGoal.option_hard:
+            return versus_stage_completable(world, state, 12, 3)
+        case VersusGoal.option_very_hard:
+            return versus_stage_completable(world, state, 12, 4)
+        case _:
+            raise Exception(f"Cannot determine versus clearability from goal {world.options.versus_goal}")
+
+
+def versus_stage_clears_included(world: "TetrisAttackWorld"):
+    if world.options.versus_goal == VersusGoal.option_no_vs and not world.options.versus_inclusion:
+        return False
+    return True
 
 
 def goal_locations_included(world: "TetrisAttackWorld"):
@@ -384,6 +429,8 @@ def goal_locations_included(world: "TetrisAttackWorld"):
     if world.options.stage_clear_goal or world.options.stage_clear_inclusion:
         mode_count += 1
     if world.options.puzzle_goal != PuzzleGoal.option_no_puzzle or world.options.puzzle_inclusion != PuzzleInclusion.option_no_puzzle:
+        mode_count += 1
+    if world.options.versus_goal != VersusGoal.option_no_vs or world.options.versus_inclusion:
         mode_count += 1
     return mode_count > 1
 
@@ -393,38 +440,48 @@ def able_to_win(world: "TetrisAttackWorld", state):
         return False
     if world.options.puzzle_goal != PuzzleGoal.option_no_puzzle and not puzzle_able_to_win(world, state):
         return False
+    if world.options.versus_goal != VersusGoal.option_no_vs and not versus_able_to_win(world, state):
+        return False
     return True
 
 
 def get_starting_sc_round(world: "TetrisAttackWorld"):
     include_puzzle = world.options.puzzle_goal != PuzzleGoal.option_no_puzzle or world.options.puzzle_inclusion != PuzzleInclusion.option_no_puzzle
+    include_vs = world.options.versus_goal != VersusGoal.option_no_vs or world.options.versus_inclusion
     starting_sc_round = world.options.starter_pack + 1
-    if starting_sc_round > 6 and not include_puzzle:
+    if starting_sc_round > 6 and not include_puzzle and not include_vs:
         starting_sc_round = 1
     return starting_sc_round
 
 
 def get_starting_puzzle_level(world: "TetrisAttackWorld") -> int:
     include_stage_clear = world.options.stage_clear_goal or world.options.stage_clear_inclusion
+    include_vs = world.options.versus_goal != VersusGoal.option_no_vs or world.options.versus_inclusion
     starting_puzzle_level = world.options.starter_pack + 1 - StarterPack.option_puzzle_level_1
-    if starting_puzzle_level < 1 and not include_stage_clear:
+    if starting_puzzle_level < 1 and not include_stage_clear and not include_vs:
         starting_puzzle_level = 1
     if starting_puzzle_level > 0 and not normal_puzzle_set_included(world):
         starting_puzzle_level += 6
     return starting_puzzle_level
 
+def get_starting_vs_flag(world: "TetrisAttackWorld") -> bool:
+    include_stage_clear = world.options.stage_clear_goal or world.options.stage_clear_inclusion
+    include_puzzle = world.options.puzzle_goal != PuzzleGoal.option_no_puzzle or world.options.puzzle_inclusion != PuzzleInclusion.option_no_puzzle
+    if not include_stage_clear and not include_puzzle:
+        return True
+    return world.options.starter_pack == StarterPack.option_vs_two_stages
 
 def normal_puzzle_set_included(world: "TetrisAttackWorld"):
     return (world.options.puzzle_goal == PuzzleGoal.option_puzzle
-            or world.options.puzzle_goal == PuzzleGoal.option_puzzle_and_secret_puzzle
-            or world.options.puzzle_goal == PuzzleGoal.option_puzzle_or_secret_puzzle
+            or world.options.puzzle_goal == PuzzleGoal.option_puzzle_and_extra_puzzle
+            or world.options.puzzle_goal == PuzzleGoal.option_puzzle_or_extra_puzzle
             or world.options.puzzle_inclusion == PuzzleInclusion.option_puzzle
-            or world.options.puzzle_inclusion == PuzzleInclusion.option_puzzle_and_secret_puzzle)
+            or world.options.puzzle_inclusion == PuzzleInclusion.option_puzzle_and_extra_puzzle)
 
 
-def secret_puzzle_set_included(world: "TetrisAttackWorld"):
-    return (world.options.puzzle_goal == PuzzleGoal.option_secret_puzzle
-            or world.options.puzzle_goal == PuzzleGoal.option_puzzle_and_secret_puzzle
-            or world.options.puzzle_goal == PuzzleGoal.option_puzzle_or_secret_puzzle
-            or world.options.puzzle_inclusion == PuzzleInclusion.option_secret_puzzle
-            or world.options.puzzle_inclusion == PuzzleInclusion.option_puzzle_and_secret_puzzle)
+def extra_puzzle_set_included(world: "TetrisAttackWorld"):
+    return (world.options.puzzle_goal == PuzzleGoal.option_extra_puzzle
+            or world.options.puzzle_goal == PuzzleGoal.option_puzzle_and_extra_puzzle
+            or world.options.puzzle_goal == PuzzleGoal.option_puzzle_or_extra_puzzle
+            or world.options.puzzle_inclusion == PuzzleInclusion.option_extra_puzzle
+            or world.options.puzzle_inclusion == PuzzleInclusion.option_puzzle_and_extra_puzzle)

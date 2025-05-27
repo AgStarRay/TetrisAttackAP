@@ -8,7 +8,7 @@ from NetUtils import ClientStatus, color
 from worlds.AutoSNIClient import SNIClient
 from worlds.tetrisattack import item_table, location_table
 from worlds.tetrisattack.Items import progressive_items
-from worlds.tetrisattack.Rom import GOALS_POSITION, DEATHLINKHINT
+from worlds.tetrisattack.Rom import GOALS_POSITION, DEATHLINKHINT, MASKED_VERSION, SRAM_FACTOR
 
 if typing.TYPE_CHECKING:
     from SNIClient import SNIContext
@@ -21,36 +21,28 @@ WRAM_START = 0xF50000
 WRAM_SIZE = 0x20000
 SRAM_START = 0xE00000
 
+TETRISATTACK_APVERSION = ROM_START + 0x007FB0
+APVERSION_SIZE = 0x06
 TETRISATTACK_ROMHASH_START = ROM_START + 0x007FC0
 ROMHASH_SIZE = 0x15
 
 GAME_STATE = WRAM_START + 0x02A0
-SRAM_CHECK_FLAG = SRAM_START + 0x0000
-RECEIVED_ITEM_NUMBER = SRAM_START + 0x0400
-RECEIVED_ITEM_ID = SRAM_START + 0x0402
-RECEIVED_ITEM_ACTION = SRAM_START + 0x0404
-RECEIVED_ITEM_ARG = SRAM_START + 0x0406
-RECEIVE_CHECK = SRAM_START + 0x0408
-DEATHLINK_EVENT = SRAM_START + 0x0448
-DEATHLINK_TRIGGER = SRAM_START + 0x040C
+SRAM_SNI_BAND_START = SRAM_START + 0x0400
+SNI_BAND_SIZE = 0x10
+SNI_RECEIVED_ITEM_NUMBER = 0x0
+SNI_RECEIVED_ITEM_ID = 0x2
+SNI_RECEIVED_ITEM_ACTION = 0x4
+SNI_RECEIVED_ITEM_ARG = 0x6
+SNI_RECEIVE_CHECK = 0x08
+SNI_DEATHLINK_TRIGGER = 0xC
+SNI_DEATHLINK_EVENT = 0xE
 STAGECLEARLASTSTAGE_COMPLETED = SRAM_START + location_table["Stage Clear Last Stage Clear"].code
 PUZZLEL6_COMPLETED = SRAM_START + location_table["Puzzle Round 6 Clear"].code
-SECRETPUZZLEL6_COMPLETED = SRAM_START + location_table["Secret Puzzle Round 6 Clear"].code
-VSEASYSTAGE10_COMPLETED = SRAM_START + 0x0249
-VSNORMALSTAGE10_COMPLETED = SRAM_START + 0x0255
-VSNORMALSTAGE11_COMPLETED = SRAM_START + 0x0256
-VSHARDSTAGE10_COMPLETED = SRAM_START + 0x0261
-VSHARDSTAGE11_COMPLETED = SRAM_START + 0x0262
-VSHARDSTAGE12_COMPLETED = SRAM_START + 0x0263
-VSVHARDSTAGE10_COMPLETED = SRAM_START + 0x026D
-VSVHARDSTAGE11_COMPLETED = SRAM_START + 0x026E
-VSVHARDSTAGE12_COMPLETED = SRAM_START + 0x026F
-VSVHARDNOCONT_COMPLETED = SRAM_START + 0x0273
+EXTRAPUZZLEL6_COMPLETED = SRAM_START + location_table["Extra Puzzle Round 6 Clear"].code
+VSSTAGES_COMPLETED = SRAM_START + 0x225
 SRAM_AP_REGION_OFFSET = 0x020
-SRAM_AP_REGION_END = 0x400
+SRAM_AP_REGION_END = pow(2, SRAM_FACTOR)
 SRAM_AP_REGION_LENGTH = SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET
-
-VALID_GAME_STATES = [0x01, 0x02, 0x03, 0x04, 0x05]
 
 ACTION_CODE_NOOP = 0
 ACTION_CODE_RECEIVED_ITEM = 2
@@ -70,24 +62,33 @@ class TetrisAttackSNIClient(SNIClient):
     currently_dead = False
     all_goals = None
     deathlink_hint = None
+    looked_through_locations = False
 
     async def validate_rom(self, ctx: "SNIContext") -> bool:
         from SNIClient import snes_read
+        from Utils import __version__
 
-        rom_name = await snes_read(ctx, TETRISATTACK_ROMHASH_START, ROMHASH_SIZE)
-        if rom_name is None or rom_name[:6] != b"APTATK":
+        rom_prefix = await snes_read(ctx, TETRISATTACK_APVERSION, APVERSION_SIZE)
+        expected_prefix = f'ATK{__version__.replace(".", "")[0:3]}'
+        prefix_bytes = bytearray(expected_prefix, 'utf8')
+        if rom_prefix is None or not rom_prefix.startswith(prefix_bytes):
+            return False
+        rom_hash = await snes_read(ctx, TETRISATTACK_ROMHASH_START, ROMHASH_SIZE)
+        expected_hash = f'{format(MASKED_VERSION, 'X')}'
+        hash_bytes = bytearray(expected_hash, 'utf8')
+        if rom_hash is None or not rom_hash.startswith(hash_bytes):
             return False
 
         ctx.game = self.game
         ctx.items_handling = 0b111  # remote items
-        ctx.rom = rom_name
+        ctx.rom = rom_hash
 
         return True
 
     async def deathlink_kill_player(self, ctx):
         from SNIClient import snes_buffered_write, snes_flush_writes, DeathState
         self.awaiting_deathlink_event = True
-        snes_buffered_write(ctx, DEATHLINK_EVENT, pack("H", 1))
+        snes_buffered_write(ctx, SRAM_SNI_BAND_START + SNI_DEATHLINK_EVENT, pack("H", 1))
         await snes_flush_writes(ctx)
         ctx.death_state = DeathState.dead
         ctx.last_death_link = time.time()
@@ -100,55 +101,49 @@ class TetrisAttackSNIClient(SNIClient):
             ctx.rom = None
             self.all_goals = None
             self.deathlink_hint = None
-            return
-        sram_ready = await snes_read(ctx, SRAM_CHECK_FLAG, 0x1)
-        if sram_ready is None or sram_ready[0] != 1:
-            return
-        game_state = await snes_read(ctx, GAME_STATE, 0x1)
-        if game_state is None or game_state[0] not in VALID_GAME_STATES:
+            self.looked_through_locations = False
             return
 
-        # Initial conditions are good, let's interact
         if self.all_goals is None:
             self.all_goals = await snes_read(ctx, GOALS_POSITION, 0x3)
         if self.deathlink_hint is None:
             self.deathlink_hint = await snes_read(ctx, DEATHLINKHINT, 0x1)
 
+        # Initial conditions are good, let's interact
         if "Deathlink" not in ctx.tags:
             if self.deathlink_hint is not None and self.deathlink_hint[0] != 0:
                 await ctx.update_death_link(True)
 
         # Check if topped out or ran out of moves
         if "DeathLink" in ctx.tags and ctx.last_death_link + 1 < time.time():
-            message = ""
-            deathlink_trigger = await snes_read(ctx, DEATHLINK_TRIGGER, 0x1)
-            if deathlink_trigger is not None and deathlink_trigger[0] > 0:
-                if self.awaiting_deathlink_event:
-                    self.awaiting_deathlink_event = False
-                else:
-                    if ctx.slot:
-                        message = get_deathlink_message(ctx.player_names[ctx.slot], deathlink_trigger[0])
-                self.currently_dead = True
-                ctx.last_death_link = time.time()
-                snes_buffered_write(ctx, DEATHLINK_TRIGGER, pack("H", 0))
-            elif game_state[0] != 5:
-                self.currently_dead = False
-            if not self.awaiting_deathlink_event:
-                await ctx.handle_deathlink_state(self.currently_dead, message)
+            game_state = await snes_read(ctx, GAME_STATE, 0x1)
+            if game_state is not None:
+                message = ""
+                deathlink_trigger = await snes_read(ctx, SRAM_SNI_BAND_START + SNI_DEATHLINK_TRIGGER, 0x1)
+                if deathlink_trigger is not None and deathlink_trigger[0] > 0:
+                    if self.awaiting_deathlink_event:
+                        self.awaiting_deathlink_event = False
+                    else:
+                        if ctx.slot:
+                            message = get_deathlink_message(ctx.player_names[ctx.slot], deathlink_trigger[0])
+                    self.currently_dead = True
+                    ctx.last_death_link = time.time()
+                    snes_buffered_write(ctx, SRAM_SNI_BAND_START + SNI_DEATHLINK_TRIGGER, pack("H", 0))
+                elif game_state[0] != 5:
+                    self.currently_dead = False
+                if not self.awaiting_deathlink_event:
+                    await ctx.handle_deathlink_state(self.currently_dead, message)
 
         # Check if game is ready to receive
-        received_item_action = await snes_read(ctx, RECEIVED_ITEM_ACTION, 0x2)
-        if received_item_action is None or received_item_action[0] > 0x00:
+        sni_data = await snes_read(ctx, SRAM_SNI_BAND_START, SNI_BAND_SIZE)
+        if sni_data is None:
             return
-        received_item_count_bytes = await snes_read(ctx, RECEIVED_ITEM_NUMBER, 0x2)
-        if received_item_count_bytes is None:
+        sni_16_bit_data = struct.unpack("8H", sni_data)
+        if sni_16_bit_data[SNI_RECEIVED_ITEM_ACTION >> 1] > 0x00:
             return
-        receive_check_bytes = await snes_read(ctx, RECEIVE_CHECK, 0x2)
-        if receive_check_bytes is None:
-            return
-        received_item_count = struct.unpack("H", received_item_count_bytes)[0]
-        receive_check = struct.unpack("H", receive_check_bytes)[0]
-        if received_item_count != receive_check:
+        received_item_count = sni_16_bit_data[SNI_RECEIVED_ITEM_NUMBER >> 1]
+        receive_check = sni_16_bit_data[SNI_RECEIVE_CHECK >> 1]
+        if receive_check < received_item_count and receive_check < 32768:
             return
 
         # Grab the entire Archipelago SRAM region
@@ -170,7 +165,7 @@ class TetrisAttackSNIClient(SNIClient):
                         if sc_last_stage_clear is None or sc_last_stage_clear == 0:
                             goals_met = False
                 puzzle_goaled = True
-                secret_goaled = True
+                extra_goaled = True
                 if (self.all_goals[1] & 1) != 0:
                     pz_6_10_clear = sram_bytes[PUZZLEL6_COMPLETED % SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET]
                     if pz_6_10_clear is None or pz_6_10_clear == 0:
@@ -181,22 +176,26 @@ class TetrisAttackSNIClient(SNIClient):
                         if pz_6_10_clear is None or pz_6_10_clear == 0:
                             puzzle_goaled = False
                 if (self.all_goals[1] & 2) != 0:
-                    pz_s_6_10_clear = sram_bytes[SECRETPUZZLEL6_COMPLETED % SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET]
+                    pz_s_6_10_clear = sram_bytes[EXTRAPUZZLEL6_COMPLETED % SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET]
                     if pz_s_6_10_clear is None or pz_s_6_10_clear == 0:
-                        secret_goaled = False
+                        extra_goaled = False
                     else:
                         pz_s_6_10_clear = sram_bytes[
-                            (SECRETPUZZLEL6_COMPLETED + 0x101) % SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET]
+                            (EXTRAPUZZLEL6_COMPLETED + 0x101) % SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET]
                         if pz_s_6_10_clear is None or pz_s_6_10_clear == 0:
-                            secret_goaled = False
+                            extra_goaled = False
                 if (self.all_goals[1] & 4) != 0:  # Flag for one goal being enough
-                    if not puzzle_goaled and not secret_goaled:
+                    if not puzzle_goaled and not extra_goaled:
                         goals_met = False
-                elif not puzzle_goaled or not secret_goaled:
+                elif not puzzle_goaled or not extra_goaled:
                     goals_met = False
                 if self.all_goals[2] != 0:
-                    # TODO: Implement Vs goal
-                    goals_met = False
+                    goal_difficulty = self.all_goals[2] & 3
+                    goal_stage = ((self.all_goals[2] >> 2) & 3) + 8
+                    goal_stage_clear = sram_bytes[
+                        (VSSTAGES_COMPLETED + goal_stage) % SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET]
+                    if (goal_stage_clear & (8 << goal_difficulty)) == 0:
+                        goals_met = False
             if goals_met:
                 await ctx.send_msgs([{"cmd": "StatusUpdate", "status": ClientStatus.CLIENT_GOAL}])
                 ctx.finished_game = True
@@ -208,18 +207,24 @@ class TetrisAttackSNIClient(SNIClient):
                 # Locations that are separated by a multiple of 1 KiB are the same, meaning they give multiple items
                 # The game fills up to bit 6 with the value 0x7F
                 loc_obtained = sram_bytes[loc_id % SRAM_AP_REGION_END - SRAM_AP_REGION_OFFSET]
-                if (loc_obtained & 0x40) != 0:
+                bitmask = 1 << (loc_id // SRAM_AP_REGION_END)
+                if (loc_obtained & bitmask) != 0:
                     location = ctx.location_names.lookup_in_game(loc_id)
-                    total_locations = len(ctx.missing_locations) + len(ctx.checked_locations)
                     new_checks.append(loc_id)
-                    ctx.locations_checked.add(loc_id)
                     snes_logger.info(
-                        f"New check: {location} ({len(ctx.checked_locations) + len(new_checks)}/{total_locations})")
+                        f"New check: {location} ({len(ctx.checked_locations) + len(new_checks)}/{len(ctx.server_locations)})")
         if len(new_checks) > 0:
             await ctx.send_msgs([{"cmd": "LocationChecks", "locations": new_checks}])
+            ctx.locations_checked.update(new_checks)
+        elif not self.looked_through_locations:
+            snes_logger.info(f"No new location checks ({len(ctx.checked_locations)}/{len(ctx.server_locations)})")
+        self.looked_through_locations = True
 
         # Check for new items
         old_item_count = received_item_count
+        if received_item_count >= 32768:
+            received_item_count = 0
+            old_item_count = -1
         action_code = ACTION_CODE_NOOP
         while received_item_count < len(ctx.items_received):
             item = ctx.items_received[received_item_count]
@@ -237,15 +242,19 @@ class TetrisAttackSNIClient(SNIClient):
                         color(ctx.player_names[item.player], "yellow"),
                         ctx.location_names.lookup_in_slot(item.location, item.player), received_item_count,
                         len(ctx.items_received)))
+                    snes_logger.info("Granting %s #%d (%d/%d)" % (
+                        ctx.item_names.lookup_in_game(item.item),
+                        current_count + 1, received_item_count, len(ctx.items_received)))
                     item_id_range = get_progressive_item_addr_range(item.item)
                     new_item_id = item_id_range[0] + current_count
                     if new_item_id >= item_id_range[1]:
-                        raise Exception(
+                        snes_logger.warning(
                             f"Too many copies of {ctx.item_names.lookup_in_game(item.item)} to fit into SRAM, maximum of {item_id_range[1] - item_id_range[0]}")
-                    snes_buffered_write(ctx, RECEIVED_ITEM_ID, pack("H", new_item_id))
-                    snes_buffered_write(ctx, RECEIVED_ITEM_ARG, pack("H", 1))
-                    action_code = ACTION_CODE_RECEIVED_ITEM
-                    break
+                    else:
+                        snes_buffered_write(ctx, SRAM_SNI_BAND_START + SNI_RECEIVED_ITEM_ID, pack("H", new_item_id))
+                        snes_buffered_write(ctx, SRAM_SNI_BAND_START + SNI_RECEIVED_ITEM_ARG, pack("H", 1))
+                        action_code = ACTION_CODE_RECEIVED_ITEM
+                        break
                 else:
                     logging.info("Already have %d copies of %s (%d/%d in list)" % (
                         current_count,
@@ -260,8 +269,11 @@ class TetrisAttackSNIClient(SNIClient):
                         color(ctx.player_names[item.player], "yellow"),
                         ctx.location_names.lookup_in_slot(item.location, item.player), received_item_count,
                         len(ctx.items_received)))
-                    snes_buffered_write(ctx, RECEIVED_ITEM_ID, pack("H", item.item))
-                    snes_buffered_write(ctx, RECEIVED_ITEM_ARG, pack("H", progressive_count))
+                    snes_logger.info("Granting %s (%d/%d)" % (
+                        ctx.item_names.lookup_in_game(item.item),
+                        received_item_count, len(ctx.items_received)))
+                    snes_buffered_write(ctx, SRAM_SNI_BAND_START + SNI_RECEIVED_ITEM_ID, pack("H", item.item))
+                    snes_buffered_write(ctx, SRAM_SNI_BAND_START + SNI_RECEIVED_ITEM_ARG, pack("H", progressive_count))
                     action_code = ACTION_CODE_RECEIVED_ITEM
                     if item.item == 0x10E or item.item == 0x111:
                         pass
@@ -273,8 +285,8 @@ class TetrisAttackSNIClient(SNIClient):
                         color(ctx.item_names.lookup_in_game(item.item), "red", "bold"), received_item_count,
                         len(ctx.items_received)))
         if received_item_count > old_item_count:
-            snes_buffered_write(ctx, RECEIVED_ITEM_ACTION, pack("H", action_code))
-            snes_buffered_write(ctx, RECEIVED_ITEM_NUMBER, pack("H", received_item_count))
+            snes_buffered_write(ctx, SRAM_SNI_BAND_START + SNI_RECEIVED_ITEM_ACTION, pack("H", action_code))
+            snes_buffered_write(ctx, SRAM_SNI_BAND_START + SNI_RECEIVED_ITEM_NUMBER, pack("H", received_item_count))
         else:  # Check for collected locations
             collected_loc = 0
             collection_bitmask = 0
@@ -290,10 +302,11 @@ class TetrisAttackSNIClient(SNIClient):
                     collection_bitmask = bitmask
                     break
             if collected_loc != 0:
-                snes_buffered_write(ctx, RECEIVED_ITEM_ID, pack("H", collected_loc))
-                snes_buffered_write(ctx, RECEIVED_ITEM_ARG, pack("H", collection_bitmask))
-                snes_buffered_write(ctx, RECEIVED_ITEM_ACTION, pack("H", ACTION_CODE_MARK_COMPLETE))
-                snes_buffered_write(ctx, RECEIVE_CHECK, pack("H", 0xFFFF))
+                snes_buffered_write(ctx, SRAM_SNI_BAND_START + SNI_RECEIVED_ITEM_ID, pack("H", collected_loc))
+                snes_buffered_write(ctx, SRAM_SNI_BAND_START + SNI_RECEIVED_ITEM_ARG, pack("H", collection_bitmask))
+                snes_buffered_write(ctx, SRAM_SNI_BAND_START + SNI_RECEIVED_ITEM_ACTION,
+                                    pack("H", ACTION_CODE_MARK_COMPLETE))
+                snes_buffered_write(ctx, SRAM_SNI_BAND_START + SNI_RECEIVE_CHECK, pack("H", 0xFFFF))
 
         await snes_flush_writes(ctx)
 
@@ -315,7 +328,7 @@ def get_progressive_item_addr_range(item_id) -> (int, int):
     return item.starting_id, item.starting_id + item.amount
 
 
-def get_deathlink_message(player_name, deathlink_code) -> str:
+def get_deathlink_message(player_name: str, deathlink_code: int) -> str:
     match deathlink_code:
         case 1:
             return f"{player_name} topped out"
@@ -351,5 +364,29 @@ def get_deathlink_message(player_name, deathlink_code) -> str:
             return f"{player_name} lost to Kamek"
         case 27:
             return f"{player_name} lost to Bowser"
+        case 32:
+            return f"{player_name} topped out simultaneously with Lakitu"
+        case 33:
+            return f"{player_name} topped out simultaneously with Bumpty"
+        case 34:
+            return f"{player_name} topped out simultaneously with Poochy"
+        case 35:
+            return f"{player_name} topped out simultaneously with Flying Wiggler"
+        case 36:
+            return f"{player_name} topped out simultaneously with Froggy"
+        case 37:
+            return f"{player_name} topped out simultaneously with Gargantua Blargg"
+        case 38:
+            return f"{player_name} topped out simultaneously with Lunge Fish"
+        case 39:
+            return f"{player_name} topped out simultaneously with Raphael the Raven"
+        case 40:
+            return f"{player_name} topped out simultaneously with Hookbill the Koopa"
+        case 41:
+            return f"{player_name} topped out simultaneously with Naval Piranha"
+        case 42:
+            return f"{player_name} topped out simultaneously with Kamek"
+        case 43:
+            return f"{player_name} topped out simultaneously with Bowser"
         case _:
             return f"{player_name} died somehow ({deathlink_code})"

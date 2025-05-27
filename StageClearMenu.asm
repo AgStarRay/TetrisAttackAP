@@ -9,11 +9,14 @@ DATA16_A1_StageClearUnlockOffsets:
 
 CODE_ArchipelagoStageClearMenu:
     print "New stage clear submenu state 8 procedure 0 at ",pc
+    ;TODO: AP and lock sprites are not loaded when returning from a stage
     JSL.L CODE_SRAMValidation
     JSL.L CODE_ScanIncomingArchipelagoItems
     JSR.W CODE_SetLocalRoundClears
+    SEP #$20
     LDA.L SRAM_StageClearSpecialStageCompletions
     CMP.L SRAM_StageClearReceivedSpecialStages
+    REP #$20
     BCS .SkipSpecialStage
         JSR.W CODE_TriggerSpecialStage
         JML.L CODE_83E754
@@ -35,7 +38,7 @@ CODE_ArchipelagoStageClearMenu:
             STA.W WRAM7E_OAMBuffer,Y
             INY
             INY
-            LDA.L SRAM_LockSpriteValues,X
+            LDA.L WRAM_LockSpriteValues,X
             AND.W #$00FF
             BEQ .UseNormalLockSprite
                 LDA.W #GFX_LockSpriteHighlighted
@@ -50,32 +53,18 @@ CODE_ArchipelagoStageClearMenu:
         .SkipLockSprite:
         LDA.L DATA8_StageClearRound1Checks,X
         AND.W #$00FF
-        STA.L SRAM_CheckComparisonTemp
+        STA.L WRAM_CheckComparisonTemp
         LDA.L SRAM_StageClearRound1Clears,X
         AND.W #$00FF
-        CMP.L SRAM_CheckComparisonTemp
+        CMP.L WRAM_CheckComparisonTemp
         BCS .SkipAPSprite
-            JSR.W CODE_MenuSCCalculateSpritePos
-            STA.W WRAM7E_OAMBuffer,Y
-            INY
-            INY
-            LDA.W #GFX_APSprite
-            STA.W WRAM7E_OAMBuffer,Y
-            INY
-            INY
+            %append_sprite_sub(CODE_MenuSCCalculateSpritePos, GFX_APSprite)
             BRA .NextSlot
         .SkipAPSprite:
         LDA.L SRAM_StageClearRound1Clears,X
         BIT.W #$0040
         BEQ .SkipClearSprite
-            JSR.W CODE_MenuSCCalculateSpritePos
-            STA.W WRAM7E_OAMBuffer,Y
-            INY
-            INY
-            LDA.W #GFX_StageClearSprite
-            STA.W WRAM7E_OAMBuffer,Y
-            INY
-            INY
+            %append_sprite_sub(CODE_MenuSCCalculateSpritePos, GFX_StageClearSprite)
             BRA .NextSlot
         .SkipClearSprite:
         .NextSlot:
@@ -102,24 +91,24 @@ CODE_ArchipelagoStageClearMenu:
     BEQ .SkipUnhighlightLocks
     .UnhighlightLocks:
         LDA.W #$0000
-        STA.L SRAM_LockSpriteValues
-        STA.L SRAM_LockSpriteValues+2
-        STA.L SRAM_LockSpriteValues+4
-        STA.L SRAM_LockSpriteValues+6
-        STA.L SRAM_LockSpriteValues+8
-        STA.L SRAM_LockSpriteValues+10
-        STA.L SRAM_LockSpriteValues+12
-        STA.L SRAM_LockSpriteValues+14
-        STA.L SRAM_LockSpriteValues+16
-        STA.L SRAM_LockSpriteValues+18
-        STA.L SRAM_LockSpriteValues+20
-        STA.L SRAM_LockSpriteValues+22
-        STA.L SRAM_LockSpriteValues+24
-        STA.L SRAM_LockSpriteValues+26
-        STA.L SRAM_LockSpriteValues+28
-        STA.L SRAM_LockSpriteValues+30
-        STA.L SRAM_LockSpriteValues+32
-        STA.L SRAM_LockSpriteValues+34
+        STA.L WRAM_LockSpriteValues
+        STA.L WRAM_LockSpriteValues+2
+        STA.L WRAM_LockSpriteValues+4
+        STA.L WRAM_LockSpriteValues+6
+        STA.L WRAM_LockSpriteValues+8
+        STA.L WRAM_LockSpriteValues+10
+        STA.L WRAM_LockSpriteValues+12
+        STA.L WRAM_LockSpriteValues+14
+        STA.L WRAM_LockSpriteValues+16
+        STA.L WRAM_LockSpriteValues+18
+        STA.L WRAM_LockSpriteValues+20
+        STA.L WRAM_LockSpriteValues+22
+        STA.L WRAM_LockSpriteValues+24
+        STA.L WRAM_LockSpriteValues+26
+        STA.L WRAM_LockSpriteValues+28
+        STA.L WRAM_LockSpriteValues+30
+        STA.L WRAM_LockSpriteValues+32
+        STA.L WRAM_LockSpriteValues+34
     .SkipUnhighlightLocks:
     LDA.B WRAM00_Pad1Press
     BIT.W #$1080
@@ -227,19 +216,19 @@ CODE_HighlightRoundLockSprites:
     ASL A
     TAX
     LDA.W #$0001
-    STA.L SRAM_LockSpriteValues,X
+    STA.L WRAM_LockSpriteValues,X
     LDA.L DATA8_StageClearFlags
     BIT.W #$0002
     BNE .CanSkipFirstStage
         LDA.W #$0001
-        STA.L SRAM_LockSpriteValues+1,X
+        STA.L WRAM_LockSpriteValues+1,X
     .CanSkipFirstStage:
     LDA.L DATA8_StageClearFlags
     BIT.W #$0001
     BNE .SkipIndividualStageLocks
         LDA.W #$0101
-        STA.L SRAM_LockSpriteValues+2,X
-        STA.L SRAM_LockSpriteValues+4,X
+        STA.L WRAM_LockSpriteValues+2,X
+        STA.L WRAM_LockSpriteValues+4,X
     .SkipIndividualStageLocks:
     RTS
 DATA16_MenuSCSpritePositions:
@@ -258,6 +247,86 @@ CODE_TriggerSpecialStage:
     INC A
     STA.W WRAM7E_StageClearStageIndex
     RTS
+
+CODE_DisplaySCTracker:
+    LDA.W #$0C6C ; 'S'
+    STA.L $7E228E
+    LDA.W #$0C5C ; 'C'
+    STA.L $7E2290
+    LDA.W #$0015
+    LDX.W #DATA16_SCTrackerLine2
+    LDY.W #$22CE
+    ;MVN $7E,bank(DATA16_SCTrackerLine2)
+    LDA.W #$0015
+    LDX.W #DATA16_SCTrackerLine3
+    LDY.W #$230E
+    MVN $7E,bank(DATA16_SCTrackerLine3)
+
+    ; Count total checks completed
+    LDA.W #LOC_StageClearChecksStart
+    STA.B $00
+    LDA.W #LOC_StageClearClearsStart
+    STA.B $02
+    LDA.W #(LOC_StageClearChecksEnd-LOC_StageClearChecksStart)
+    STA.B $04
+    STZ.B $06
+    JSL.L CODE_CountCompletedChecks
+    LDA.B $06
+    JSL.L CODE_16BitHexToDec
+    LDA.W #$040E
+    STA.L $7E2298
+    LDA.W $0376
+    ORA.W #$0450
+    STA.L $7E229A
+    LDA.W $0378
+    ORA.W #$0450
+    STA.L $7E229C
+    LDA.L DATA16_StageClearTotalChecks
+    JSL.L CODE_16BitHexToDec
+    LDA.W #$040E
+    STA.L $7E22A0
+    LDA.W $0376
+    ORA.W #$0450
+    STA.L $7E22A2
+    LDA.W $0378
+    ORA.W #$0450
+    STA.L $7E22A4
+
+    ; TODO: Implement tracker
+    LDA.W #$0000
+    SEP #$20
+    LDA.L SRAM_StageClearReceivedSpecialStages
+    SEC
+    SBC.L SRAM_StageClearSpecialStageCompletions
+    REP #$20
+    JSL.L CODE_16BitHexToDec ; Try finding an 8-bit version?
+    LDA.W $0376
+    ORA.W #$0850
+    STA.L $7E2318
+    LDA.W $0378
+    ORA.W #$0850
+    STA.L $7E231A
+    LDY.W WRAM7E_OAMAppendAddr
+    LDA.L SRAM_StageClearLastStageClear
+    AND.W #$00FF
+    BEQ .NotCleared
+        %append_sprite($90, $60, GFX_StageClearSprite)
+        BRA .End
+    .NotCleared:
+    LDA.L SRAM_StageClearLastStageUnlock
+    AND.W #$00FF
+    BEQ .NotUnlocked
+        %append_sprite($90, $60, GFX_APSprite)
+        BRA .End
+    .NotUnlocked:
+        %append_sprite($90, $60, GFX_LockSprite)
+    .End:
+    STY.W WRAM7E_OAMAppendAddr
+    RTS
+DATA16_SCTrackerLine2:
+    dw $0451,$040E,$0452,$040E,$0453,$040E,$0454,$040E,$0455,$040E,$0456
+DATA16_SCTrackerLine3:
+    dw $046C,$0469,$045C,$0465,$040E,$040E,$040E,$040E,$040E,$0465,$046C
 
 CODE_NewStageClearCustomSave:
     PHP
@@ -297,23 +366,8 @@ CODE_SetLocalRoundClears:
     .RoundClears:
     STA.W WRAM7E_StageClearRoundClears
     RTS
-    
-CODE_MenuSCState1CustomCode:
-    LDA.W #$0008
-    STA.W WRAM83_GameSubstate
-    PHB
-    PHK
-    PLB
-    LDY.W #DATA_CustomGraphicsVRAMDMA
-    JSL.L CODE_CreateVRAMDMA
-    PLB
-    JML.L CODE_83DDDC
-
-CODE_MenuSCState2CustomCode0:
-    RTL
 
 CODE_MenuSCState2CustomCode11:
-    PHB
     LDA.W #$0000
     STA.L $7E96E3
     STA.L $7E96E5
@@ -334,9 +388,4 @@ CODE_MenuSCState2CustomCode11:
     JSL.L CODE_839565_JSR
     JSL.L CODE_83AEB0_JSR
     JSL.L CODE_83A058_JSR
-    PHK
-    PLB
-    LDY.W #DATA_CustomGraphicsVRAMDMA
-    JSL.L CODE_CreateVRAMDMA
-    PLB
     RTL

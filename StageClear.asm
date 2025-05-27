@@ -23,6 +23,7 @@ CODE_LoadCustomScore:
 
 CODE_OnStageClearWin:
     PHP
+    JSL.L CODE_SRAMValidation
     SEP #$20
     LDA.W WRAM7E_StageClearSpecialIndex
     BEQ .RegularStageClear
@@ -150,8 +151,10 @@ CODE_StageClearResultSummonNextStage:
         LDA.W #$0001
         BRA .SetEndModeIndicator
     .AdvanceToNextStage:
+        SEP #$20
         LDA.L SRAM_StageClearSpecialStageCompletions
         CMP.L SRAM_StageClearReceivedSpecialStages
+        REP #$20
         BCS .SkipSpecialStage
             LDA.W #$0001
             BRA .SetEndModeIndicator
@@ -194,7 +197,7 @@ CODE_MenuSCPickFirstStage:
             CMP.W #$0006
             BCC .Done
                 LDA.W #ErrorCode_AttemptedToStartFullyLockedRound
-                STA.B $08
+                STA.L WRAM_ErrorCode
                 BRK
     .ReplayingClearedRound:
     .Done:
@@ -279,7 +282,7 @@ CODE_SCUpdateHPWithCustomIndex:
     CMP.W #$0002
     BEQ .LastStage
         LDA.L DATA16_SCSpecialBowserHealthBars
-        STA.L SRAM_SCCurrentHealthBar
+        STA.L WRAM_SCCurrentHealthBar
         LDA.L WRAM_BowserDamage
         STA.B $14
         CMP.L DATA16_SCSpecialBowserHP
@@ -289,7 +292,7 @@ CODE_SCUpdateHPWithCustomIndex:
         BRA .DisplayHealthBarAmount
     .LastStage:
         LDA.L DATA16_SCLastBowserHealthBars
-        STA.L SRAM_SCCurrentHealthBar
+        STA.L WRAM_SCCurrentHealthBar
         LDA.L WRAM_BowserDamage
         STA.B $14
         CMP.L DATA16_SCLastBowserHP
@@ -303,13 +306,13 @@ CODE_SCUpdateHPWithCustomIndex:
             SEC
             SBC.B $1C
             STA.B $14
-            LDA.L SRAM_SCCurrentHealthBar
+            LDA.L WRAM_SCCurrentHealthBar
             DEC A
-            STA.L SRAM_SCCurrentHealthBar
+            STA.L WRAM_SCCurrentHealthBar
             BPL .DisplayHealthBarAmount
     .EmptyBar:
         LDA.W #$0000
-        STA.L SRAM_SCCurrentHealthBar
+        STA.L WRAM_SCCurrentHealthBar
         LDA.W #$1A00
         STA.L $7E2244
         STA.L $7E2246
@@ -320,8 +323,8 @@ CODE_SCUpdateHPWithCustomIndex:
         STA.L $7E2250
         RTL
     .CalculateBowserHPIndex:
-    LDA.L SRAM_SCCurrentHealthBar
-    CMP.L SRAM_SCPreviousHealthBar
+    LDA.L WRAM_SCCurrentHealthBar
+    CMP.L WRAM_SCPreviousHealthBar
     BEQ .SkipHPColorUpdate
         ASL A
         TAX
@@ -335,9 +338,9 @@ CODE_SCUpdateHPWithCustomIndex:
         LDY.W #DATA_HPBarColorsCGRAMDMA
         JSL.L CODE_CreateCGRAMDMA
         PLB
-        LDA.L SRAM_SCCurrentHealthBar
+        LDA.L WRAM_SCCurrentHealthBar
     .SkipHPColorUpdate:
-    STA.L SRAM_SCPreviousHealthBar
+    STA.L WRAM_SCPreviousHealthBar
     LDA.W #$0038
     STA.B $16
     JSL.L CODE_WordMultiplication
@@ -414,7 +417,7 @@ CODE_SCBowserFillHP:
     LDY.W #DATA_HPBarColorsCGRAMDMA
     JSL.L CODE_CreateCGRAMDMA
     PLB
-    LDA.L SRAM_SCCurrentHealthBar
+    LDA.L WRAM_SCCurrentHealthBar
     ASL A
     TAX
     LDA.L DATA16_SCHPBarColors,X
@@ -444,15 +447,15 @@ CODE_SCBowserFillHP:
         CLC
         ADC #$0038
         STA.L WRAM_BowserHPIndex
-        LDA.L SRAM_SCCurrentHealthBar
+        LDA.L WRAM_SCCurrentHealthBar
         INC A
-        STA.L SRAM_SCCurrentHealthBar
+        STA.L WRAM_SCCurrentHealthBar
         TXA
-        CMP.L SRAM_SCCurrentHealthBar
+        CMP.L WRAM_SCCurrentHealthBar
         BCC .HPIsMaxed
         JML.L CODE_87A7FF
     .HPIsMaxed:
-        STA.L SRAM_SCCurrentHealthBar
+        STA.L WRAM_SCCurrentHealthBar
         LDA.W #$0000
     .HPNotMaxed:
         STA.L WRAM_BowserHPIndex

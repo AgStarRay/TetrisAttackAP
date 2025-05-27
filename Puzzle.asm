@@ -32,9 +32,10 @@ CODE_OnPuzzleWin:
     PHP
     print "Puzzle clear logic at ",pc
     REP #$30
+    JSL.L CODE_SRAMValidation
     LDA.W #$0000
-    STA.L SRAM_PuzzleFanfareIsRoundClear
-    LDA.W WRAM7E_PuzzleLevelIndex
+    STA.L WRAM_PuzzleFanfareIsRoundClear
+    LDA.W WRAM7E_CharacterIndex1
     ASL A
     TAX
     LDA.W WRAM7E_PuzzleSecretFlag
@@ -101,7 +102,7 @@ CODE_OnPuzzleWin:
     .NotCleared:
         LDA.B #$00
     .EndRoundClearFlagging:
-    STA.L SRAM_PuzzleFanfareIsRoundClear
+    STA.L WRAM_PuzzleFanfareIsRoundClear
     BEQ .NoFadeOut
         LDA.B #$E1
         STA.W WRAM87_NewMusicEvent
@@ -112,7 +113,7 @@ CODE_OnPuzzleWin:
     RTL
 
 CODE_PuzzleCustomRoundClearCheck:
-    LDA.L SRAM_PuzzleFanfareIsRoundClear
+    LDA.L WRAM_PuzzleFanfareIsRoundClear
     BEQ .End
         LDA.W #$0004
         STA.W $199C
@@ -122,7 +123,7 @@ CODE_PuzzleCustomRoundClearCheck:
 
 CODE_PuzzleFanfare:
     print "Puzzle fanfare at ",pc
-    LDA.L SRAM_PuzzleFanfareIsRoundClear
+    LDA.L WRAM_PuzzleFanfareIsRoundClear
     STA.W WRAM7E_RoundClearIndicator
     BEQ .End
         LDA.W #$00FA ; Bravo II sound
@@ -133,9 +134,9 @@ CODE_PuzzleFanfare:
     RTL
 
 CODE_PuzzleCustomCreditsCheck:
-    LDA.L SRAM_PuzzleFanfareIsRoundClear
+    LDA.L WRAM_PuzzleFanfareIsRoundClear
     BEQ .End
-    LDA.W WRAM7E_PuzzleLevelIndex
+    LDA.W WRAM7E_CharacterIndex1
     CMP.W #$0005
     BNE .End
     LDA.L DATA8_GoalPuzzle
@@ -200,7 +201,7 @@ CODE_PuzzleResultSummonNextStage:
 
 CODE_SkipIfClearedOrLockedPuzzle:
     print "Cleared puzzle check code at ",pc
-    LDA.W WRAM7E_PuzzleLevelIndex
+    LDA.W WRAM7E_CharacterIndex1
     ASL A
     TAX
     LDA.W WRAM7E_PuzzleSecretFlag
@@ -228,7 +229,7 @@ CODE_SkipIfClearedOrLockedPuzzle:
     .StageIsNotCleared:
 CODE_SkipIfLockedPuzzle:
     print "Skip puzzle code at ",pc
-    LDA.W WRAM7E_PuzzleLevelIndex
+    LDA.W WRAM7E_CharacterIndex1
     ASL A
     TAX
     LDA.W WRAM7E_PuzzleSecretFlag
@@ -250,11 +251,11 @@ CODE_SkipIfLockedPuzzle:
 
 CODE_SetNewPuzzleIndex:
     print "Set new puzzle index code at ",pc
-    LDA.W WRAM7E_PuzzleLevelIndex
+    LDA.W WRAM7E_CharacterIndex1
     ASL A
     ASL A
     CLC
-    ADC.W WRAM7E_PuzzleLevelIndex
+    ADC.W WRAM7E_CharacterIndex1
     ASL A
     SEC
     ADC.W WRAM7E_PuzzleStageIndex

@@ -11,13 +11,13 @@ from worlds.AutoWorld import World
 from .Logic import stage_clear_round_gates_included, stage_clear_progressive_unlocks_included, \
     stage_clear_individual_unlocks_included, get_starting_puzzle_level
 from .Options import TetrisAttackOptions, StarterPack, PuzzleGoal, PuzzleInclusion, \
-    PuzzleMode  # the options we defined earlier
+    PuzzleMode, VersusGoal  # the options we defined earlier
 from .Items import item_table, get_items, filler_item_names, \
     get_starter_item_names  # data used below to add items to the World
 from .Locations import get_locations, location_table, TetrisAttackLocation  # same as above
 from .Regions import init_areas
 from .Rom import get_base_rom_path, patch_rom, TATKProcedurePatch, USAHASH
-from .Rules import set_stage_clear_rules, set_goal_rules, set_puzzle_rules
+from .Rules import set_stage_clear_rules, set_goal_rules, set_puzzle_rules, set_versus_rules
 from .Client import TetrisAttackSNIClient
 
 
@@ -57,7 +57,6 @@ class TetrisAttackWorld(World):
     }
 
     rom_name: bytearray
-    world_version: int = 2
 
     def __init__(self, multiworld: MultiWorld, player: int):
         self.rom_name_available_event = threading.Event()
@@ -114,7 +113,8 @@ class TetrisAttackWorld(World):
     def generate_filler(self, pool: List[Item]) -> None:
         unfilled_locations = self.multiworld.get_unfilled_locations(self.player)
         deficit = 1 if self.options.starter_pack == StarterPack.option_stage_clear_round_6 else 0
-        for _ in range(len(unfilled_locations) - len(pool) - deficit):
+        filler_count = len(unfilled_locations) - len(pool) - deficit
+        for _ in range(filler_count):
             item = self.create_item(self.get_filler_item_name())
             pool.append(item)
 
@@ -140,7 +140,7 @@ class TetrisAttackWorld(World):
                 base_name = "Puzzle"
                 if starting_level > 6:
                     starting_level -= 6
-                    base_name = "Secret Puzzle"
+                    base_name = "Extra Puzzle"
                 intermediate_level_unlocks = [item for item in progitempool
                                               if "Level 6" not in item.name
                                               and item.player == self.player]
@@ -150,7 +150,7 @@ class TetrisAttackWorld(World):
                 starting_level_locations = [loc for loc in fill_locations
                                             if (f"{base_name} {starting_level}-" in loc.name
                                                 or f"{base_name} Round {starting_level} Clear" in loc.name)
-                                            and (base_name == "Secret Puzzle" or "Secret" not in loc.name)
+                                            and (base_name == "Extra Puzzle" or "Extra" not in loc.name)
                                             and loc.player == self.player]
                 while len(items_to_add) > 0 and len(starting_level_locations) > 0:
                     i = self.random.choice(items_to_add)
@@ -170,8 +170,8 @@ class TetrisAttackWorld(World):
                     intermediate_level_unlocks.remove(extra_item)
                     index = item_to_add.name.index("Unlock")
                     next_level = int(item_to_add.name[index - 2: index - 1])
-                    if "Secret Puzzle" in item_to_add.name:
-                        base_name = "Secret Puzzle"
+                    if "Extra Puzzle" in item_to_add.name:
+                        base_name = "Extra Puzzle"
                     else:
                         base_name = "Puzzle"
                     remaining_unlocks = [item for item in progitempool
@@ -180,7 +180,7 @@ class TetrisAttackWorld(World):
                     next_level_locations = [loc for loc in fill_locations
                                             if (f"{base_name} {next_level}-" in loc.name
                                                 or f"{base_name} Round {next_level} Clear" in loc.name)
-                                            and (base_name == "Secret Puzzle" or "Secret" not in loc.name)
+                                            and (base_name == "Extra Puzzle" or "Extra" not in loc.name)
                                             and loc.player == self.player]
                     while len(remaining_unlocks) > 0 and len(next_level_locations) > 0:
                         i = self.random.choice(remaining_unlocks)
@@ -216,4 +216,5 @@ class TetrisAttackWorld(World):
     def set_rules(self) -> None:
         set_stage_clear_rules(self)
         set_puzzle_rules(self)
+        set_versus_rules(self)
         set_goal_rules(self)

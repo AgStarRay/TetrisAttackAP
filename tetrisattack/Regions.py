@@ -1,7 +1,7 @@
 ﻿from typing import Dict, TYPE_CHECKING
 from BaseClasses import Region, Location
 from .Locations import LocationData, TetrisAttackLocation
-from .Logic import stage_clear_round_accessible, puzzle_level_accessible
+from .Logic import stage_clear_round_accessible, puzzle_level_accessible, cave_of_wickedness_accessible
 
 if TYPE_CHECKING:
     from . import TetrisAttackWorld
@@ -29,12 +29,15 @@ def init_areas(world: "TetrisAttackWorld", locations: Dict[str, LocationData]) -
         create_region(world, player, locations_per_region, "Puzzle L4"),
         create_region(world, player, locations_per_region, "Puzzle L5"),
         create_region(world, player, locations_per_region, "Puzzle L6"),
-        create_region(world, player, locations_per_region, "Secret L1"),
-        create_region(world, player, locations_per_region, "Secret L2"),
-        create_region(world, player, locations_per_region, "Secret L3"),
-        create_region(world, player, locations_per_region, "Secret L4"),
-        create_region(world, player, locations_per_region, "Secret L5"),
-        create_region(world, player, locations_per_region, "Secret L6"),
+        create_region(world, player, locations_per_region, "Extra L1"),
+        create_region(world, player, locations_per_region, "Extra L2"),
+        create_region(world, player, locations_per_region, "Extra L3"),
+        create_region(world, player, locations_per_region, "Extra L4"),
+        create_region(world, player, locations_per_region, "Extra L5"),
+        create_region(world, player, locations_per_region, "Extra L6"),
+        create_region(world, player, locations_per_region, "Versus"),
+        create_region(world, player, locations_per_region, "Overworld"),
+        create_region(world, player, locations_per_region, "Mt Wickedness"),
     ]
 
     multiworld.regions += regions
@@ -44,6 +47,13 @@ def init_areas(world: "TetrisAttackWorld", locations: Dict[str, LocationData]) -
     menu.connect(stage_clear_region, "Select Stage Clear")
     puzzle_region = multiworld.get_region("Puzzle", player)
     menu.connect(puzzle_region, "Select Puzzle")
+    versus_region = multiworld.get_region("Versus", player)
+    menu.connect(versus_region, "Select Versus")
+    overworld_region = multiworld.get_region("Overworld", player)
+    versus_region.connect(overworld_region, f"Select Vs.")
+    mt_region = multiworld.get_region("Mt Wickedness", player)
+    versus_region.connect(mt_region, f"Enter Mt Wickedness",
+                                    lambda state: cave_of_wickedness_accessible(world, state))
     for x in range(1, 7):
         round_region = multiworld.get_region(f"SC Round {x}", player)
         stage_clear_region.connect(round_region, f"Select Round {x}",
@@ -51,8 +61,8 @@ def init_areas(world: "TetrisAttackWorld", locations: Dict[str, LocationData]) -
         level_region = multiworld.get_region(f"Puzzle L{x}", player)
         puzzle_region.connect(level_region, f"Select Puzzle L{x}",
                                    lambda state, n=x: puzzle_level_accessible(world, state, n))
-        level_region = multiworld.get_region(f"Secret L{x}", player)
-        puzzle_region.connect(level_region, f"Select Secret Puzzle L{x}",
+        level_region = multiworld.get_region(f"Extra L{x}", player)
+        puzzle_region.connect(level_region, f"Select Extra Puzzle L{x}",
                                    lambda state, n=x + 6: puzzle_level_accessible(world, state, n))
 
 
