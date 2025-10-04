@@ -11,14 +11,12 @@ CODE_OnVsTopOut:
             LDA.L WRAM7E_VsDifficulty
             TAY
             LDA.B #$7F
-            .LoopBitshift:
-            CPY.W #$0003
-            BEQ .DoneBitshifting
+          - CPY.W #$0003
+            BEQ +
                 LSR A
                 INY
-                BRA .LoopBitshift
-            .DoneBitshifting:
-            STA.L SRAM_VersusStageClears,X
+                BRA -
+          + STA.L SRAM_VersusStageClears,X
             STA.L SRAM_VersusStageClears+$101,X
             STA.L WRAM_VsCompletedAStage
             LDX.W #$07
@@ -51,7 +49,7 @@ CODE_OnVsTopOut:
             RTL
 
 CODE_CustomVsSubstate2:
-    JSL.L CODE_8B93B4
+    JSL.L CODE_FL_8B93B4
     LDA.W #$0003
     STA.L $0000B1
     LDA.L WRAM_VsProcedureFlags
@@ -67,8 +65,8 @@ CODE_CustomVsSubstate2:
         BMI .LessThan0
         CMP.W #$000C
         BMI .LessThan12
-        .LessThan0: 
-            LDA.W #$0000
+        .LessThan0:
+            TDC
             BRA .SetStageNumber
         .LessThan12:
             INC A
@@ -91,22 +89,22 @@ CODE_CustomVsSubstate2:
         STA.W WRAM_VsMenuSubstate
         RTL
     .GoToOverworld:
-        JSL.L CODE_8B81DD
-        JSL.L CODE_8B8531
-        JSL.L CODE_8B87B8
-        JSL.L CODE_8B8901
-        JSL.L CODE_8B8B7C
+        JSL.L CODE_FL_8B81DD
+        JSL.L CODE_FL_8B8531
+        JSL.L CODE_FL_8B87B8
+        JSL.L CODE_FL_8B8901
+        JSL.L CODE_FL_8B8B7C
         LDA.W #$FFFA
         STA.L $7ED272
-        JSL.L CODE_8B92C2
-        LDA.W #$0000
+        JSL.L CODE_FL_8B92C2
+        TDC
         STA.L $001A82
         INC.W WRAM_VsMenuSubstate
         RTL
 
 CODE_CustomVsSubstate5:
     JSL.L CODE_ScanIncomingArchipelagoItems
-    JSL.L CODE_8B92C2
+    JSL.L CODE_FL_8B92C2
     RTL
 
 CODE_CustomVsSubstate5End:
@@ -133,7 +131,7 @@ CODE_CustomVsSubstate5End:
         STA.L WRAM7E_GameState
         RTL
     .AltExit:
-        JSL.L CODE_83BDCD
+        JSL.L CODE_FL_83BDCD
         RTL
 
 CODE_VsAllowNextStageOverworld:
@@ -151,7 +149,7 @@ CODE_VsAllowNextStageOverworld:
         LDA.W #$0001
         STA.L $7ED329
     .StageIsAvailable:
-    JML.L CODE_8BA78F
+    JML.L CODE_JP_8BA78F
 
 CODE_VsAllowNextStageRunning:
     REP #$20
@@ -228,7 +226,7 @@ CODE_CustomVsSubstate6:
         STA.L WRAM7E_GameState
         LDA.W #$0001
         STA.L WRAM7E_PlayersIndicator
-        LDA.W #$0000
+        TDC
         STA.L WRAM_ModeIndex
         STA.L WRAM7E_GameSubstate
         LDA.W #$0005
@@ -330,7 +328,7 @@ CODE_ConditionalImFreeMsg:
         LDA.B #$03
         STA.L WRAM_VsLakituState,X
         REP #$20
-        JML.L CODE_8BA77F
+        JML.L CODE_JP_8BA77F
     .SkipUnlockingCharacter:
     REP #$20
     RTL

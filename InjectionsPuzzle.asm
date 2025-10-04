@@ -40,11 +40,11 @@ BRA CODE_83EEDF
 ; Load the correct puzzle number and prevent recalculation of the puzzle stage index
 org $87AA88
 JSL.L CODE_SetNewPuzzleIndex
-JSR.W CODE_EndlessStart
+JSR.W CODE_EndlessInit
 RTS
 org $87AAD5
 JSL.L CODE_SetNewPuzzleIndex
-JSR.W CODE_EndlessStart
+JSR.W CODE_EndlessInit
 RTS
 
 ; Change how the Puzzle save is initialized

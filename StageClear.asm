@@ -77,7 +77,7 @@ CODE_OnStageClearWin:
             LDA.B #$7F
             STA.L $700000,X
             STA.L $700101,X
-            JSR.W CODE_LastStageUnlock
+            JSR.W SUB_LastStageUnlock
             LDA.B #$01
             BRA .EndRoundClearFlagging
         .RoundAlreadyCleared:
@@ -106,7 +106,7 @@ CODE_OnStageClearWin:
     STA.W WRAM7E_GameSubstate
     PLP
     RTL
-CODE_LastStageUnlock:
+SUB_LastStageUnlock:
     LDA.L DATA8_StageClearFlags
     BIT.B #$10
     BEQ .NoAutoUnlock
@@ -140,10 +140,10 @@ CODE_StageClearResultSummonNextStage:
     LDA.W WRAM7E_RoundClearIndicator
     BNE .EndRound
     INC.W WRAM7E_StageClearStageIndex
-    JSR.W CODE_SkipIfClearedOrLockedStage
-    JSR.W CODE_SkipIfClearedOrLockedStage
-    JSR.W CODE_SkipIfClearedOrLockedStage
-    JSR.W CODE_SkipIfClearedOrLockedStage
+    JSR.W SUB_SkipIfClearedOrLockedStage
+    JSR.W SUB_SkipIfClearedOrLockedStage
+    JSR.W SUB_SkipIfClearedOrLockedStage
+    JSR.W SUB_SkipIfClearedOrLockedStage
     LDA.W WRAM7E_StageClearStageIndex
     CMP.W #$0006
     BCC .AdvanceToNextStage
@@ -159,7 +159,7 @@ CODE_StageClearResultSummonNextStage:
             LDA.W #$0001
             BRA .SetEndModeIndicator
         .SkipSpecialStage:
-            LDA.W #$0000
+            TDC
     .SetEndModeIndicator:
     STA.L WRAM_EndModeIndicator
     INC.W WRAM7E_GameSubstate
@@ -178,21 +178,21 @@ CODE_MenuSCPickFirstStage:
     LDA.L $700000,X
     BIT.W #$0040
     BNE .ReplayingClearedRound
-        JSR.W CODE_SkipIfClearedOrLockedStage
-        JSR.W CODE_SkipIfClearedOrLockedStage
-        JSR.W CODE_SkipIfClearedOrLockedStage
-        JSR.W CODE_SkipIfClearedOrLockedStage
-        JSR.W CODE_SkipIfLockedStage
+        JSR.W SUB_SkipIfClearedOrLockedStage
+        JSR.W SUB_SkipIfClearedOrLockedStage
+        JSR.W SUB_SkipIfClearedOrLockedStage
+        JSR.W SUB_SkipIfClearedOrLockedStage
+        JSR.W SUB_SkipIfLockedStage
         LDA.W WRAM7E_StageClearStageIndex
         CMP.W #$0006
         BCC .Done
             LDA.W #$0001
             STA.W WRAM7E_StageClearStageIndex
-            JSR.W CODE_SkipIfLockedStage
-            JSR.W CODE_SkipIfLockedStage
-            JSR.W CODE_SkipIfLockedStage
-            JSR.W CODE_SkipIfLockedStage
-            JSR.W CODE_SkipIfLockedStage
+            JSR.W SUB_SkipIfLockedStage
+            JSR.W SUB_SkipIfLockedStage
+            JSR.W SUB_SkipIfLockedStage
+            JSR.W SUB_SkipIfLockedStage
+            JSR.W SUB_SkipIfLockedStage
             LDA.W WRAM7E_StageClearStageIndex
             CMP.W #$0006
             BCC .Done
@@ -202,7 +202,7 @@ CODE_MenuSCPickFirstStage:
     .ReplayingClearedRound:
     .Done:
     RTL
-CODE_SkipIfClearedOrLockedStage:
+SUB_SkipIfClearedOrLockedStage:
     print "Cleared stage check code at ",pc
     LDA.L DATA8_StageClearFlags
     BIT.W #%0100
@@ -228,7 +228,7 @@ CODE_SkipIfClearedOrLockedStage:
     .RoundAlreadyCleared:
         RTS
     .StageIsNotCleared:
-CODE_SkipIfLockedStage:
+SUB_SkipIfLockedStage:
     print "Skip stage code at ",pc
     LDA.W WRAM7E_StageClearRoundIndex
     DEC A
@@ -272,7 +272,7 @@ CODE_SCSpecialCustomWinCondition:
         STZ.W WRAM82_GameSubstate
         STZ.B WRAM00_GameFrames
         STZ.B WRAM00_GameSeconds
-        JSL.L CODE_86D7D8
+        JSL.L CODE_FL_86D7D8
     .End:
     RTL
 
@@ -311,7 +311,7 @@ CODE_SCUpdateHPWithCustomIndex:
             STA.L WRAM_SCCurrentHealthBar
             BPL .DisplayHealthBarAmount
     .EmptyBar:
-        LDA.W #$0000
+        TDC
         STA.L WRAM_SCCurrentHealthBar
         LDA.W #$1A00
         STA.L $7E2244
@@ -349,7 +349,7 @@ CODE_SCUpdateHPWithCustomIndex:
     JSL.L CODE_WordDivision
     LDA.B $1A
     STA.L WRAM_BowserHPIndex
-    JML.L CODE_85AFE6
+    JML.L CODE_FL_85AFE6
 
 CODE_SCBowserCustomColor:
     LDA.W WRAM7E_StageClearSpecialIndex
@@ -406,7 +406,7 @@ CODE_SCBowserCustomColor:
 
 CODE_SCStartSpecialStage:
     ;TODO: Add an option for the maximum amount Bowser can heal and save the current value to SRAM
-    LDA.W #$0000
+    TDC
     STA.L WRAM_BowserDamage
     RTL
 
@@ -456,7 +456,7 @@ CODE_SCBowserFillHP:
         JML.L CODE_87A7FF
     .HPIsMaxed:
         STA.L WRAM_SCCurrentHealthBar
-        LDA.W #$0000
+        TDC
     .HPNotMaxed:
         STA.L WRAM_BowserHPIndex
         JML.L CODE_87A7FF

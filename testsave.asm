@@ -116,4 +116,4 @@ dw 1000
 org DATA8_VsCustomLastStages
 db $09,$0A,$0B,$0B
 org DATA8_VsMinimumDifficulties
-db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$01,$03
+db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$01,$02

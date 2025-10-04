@@ -54,9 +54,9 @@ JSL.L CODE_SCStartSpecialStage
 
 ; Don't toss saved score after starting Stage Clear
 org $87A9BC
-STZ.W $0332
-STZ.W $0334
-STZ.W $0336
+STZ.W WRAM7E_IngameHours
+STZ.W WRAM7E_IngameMinutes
+STZ.W WRAM7E_IngameSeconds
 RTS
 
 ; Disable Stage Clear tampering with the stage selection before gameplay
@@ -81,7 +81,7 @@ RTS
 org $87D4A3
 JML.L CODE_LoadCustomScore
 
-; Inject subroutine when results screen is going to the next stage for the password
+; Inject subroutine when results screen progresses to the next stage for the password
 org $87E1E8
 JSL.L CODE_StageClearResultSummonNextStage
 RTS

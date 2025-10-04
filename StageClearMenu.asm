@@ -12,14 +12,14 @@ CODE_ArchipelagoStageClearMenu:
     ;TODO: AP and lock sprites are not loaded when returning from a stage
     JSL.L CODE_SRAMValidation
     JSL.L CODE_ScanIncomingArchipelagoItems
-    JSR.W CODE_SetLocalRoundClears
+    JSR.W SUB_SetLocalRoundClears
     SEP #$20
     LDA.L SRAM_StageClearSpecialStageCompletions
     CMP.L SRAM_StageClearReceivedSpecialStages
     REP #$20
     BCS .SkipSpecialStage
-        JSR.W CODE_TriggerSpecialStage
-        JML.L CODE_83E754
+        JSR.W SUB_TriggerSpecialStage
+        JML.L CODE_JP_83E754
     .SkipSpecialStage:
     STZ.W WRAM7E_StageClearStageIndex
     LDY.W WRAM7E_OAMAppendAddr
@@ -34,7 +34,7 @@ CODE_ArchipelagoStageClearMenu:
         LDA.L SRAM_StageClearRound1Unlocks,X
         AND.W #$00FF
         BNE .SkipLockSprite
-            JSR.W CODE_MenuSCCalculateSpritePos
+            JSR.W SUB_MenuSCCalculateSpritePos
             STA.W WRAM7E_OAMBuffer,Y
             INY
             INY
@@ -58,13 +58,13 @@ CODE_ArchipelagoStageClearMenu:
         AND.W #$00FF
         CMP.L WRAM_CheckComparisonTemp
         BCS .SkipAPSprite
-            %append_sprite_sub(CODE_MenuSCCalculateSpritePos, GFX_APSprite)
+            %append_sprite_sub(SUB_MenuSCCalculateSpritePos, GFX_APSprite)
             BRA .NextSlot
         .SkipAPSprite:
         LDA.L SRAM_StageClearRound1Clears,X
         BIT.W #$0040
         BEQ .SkipClearSprite
-            %append_sprite_sub(CODE_MenuSCCalculateSpritePos, GFX_StageClearSprite)
+            %append_sprite_sub(SUB_MenuSCCalculateSpritePos, GFX_StageClearSprite)
             BRA .NextSlot
         .SkipClearSprite:
         .NextSlot:
@@ -90,7 +90,7 @@ CODE_ArchipelagoStageClearMenu:
     LDA.B WRAM00_Pad1Press
     BEQ .SkipUnhighlightLocks
     .UnhighlightLocks:
-        LDA.W #$0000
+        TDC
         STA.L WRAM_LockSpriteValues
         STA.L WRAM_LockSpriteValues+2
         STA.L WRAM_LockSpriteValues+4
@@ -115,16 +115,16 @@ CODE_ArchipelagoStageClearMenu:
     BEQ .Jump3
         LDA.W WRAM7E_StageClearSpecialIndex
         BNE .CanPlay
-        JSR.W CODE_CheckIfRoundIsOpen
+        JSR.W SUB_CheckIfRoundIsOpen
         BCS .CanPlay
             LDA.W #$0004
             STA.W WRAM83_NewSoundEvent
-            JSR.W CODE_HighlightRoundLockSprites
-            JML.L CODE_83E754
+            JSR.W SUB_HighlightRoundLockSprites
+            JML.L CODE_JP_83E754
         .CanPlay:
         LDA.W #$0005
         STA.W WRAM83_NewSoundEvent
-        LDA.W #$0000
+        TDC
         STA.L $7E9969
         STA.L $7E997D
         JSL.L CODE_MenuSCPickFirstStage
@@ -135,21 +135,21 @@ CODE_ArchipelagoStageClearMenu:
         LDA.W #$0005
         STA.W WRAM83_GameSubstate
         STZ.W WRAM83_MenuProcedure
-        JML.L CODE_83E754
+        JML.L CODE_JP_83E754
     .Jump3:
     BIT.W #$8000
     BEQ .Jump4
         LDA.W #$0004
         STA.W WRAM83_NewSoundEvent
-        LDA.W #$0000
+        TDC
         STA.L $7E9969
         STA.L $7E997D
         LDA.W #$0009
         STA.W WRAM83_GameSubstate
         STZ.W WRAM83_MenuProcedure
     .Jump4:
-    JML.L CODE_83E754
-CODE_MenuSCCalculateSpritePos:
+    JML.L CODE_JP_83E754
+SUB_MenuSCCalculateSpritePos:
     PHX
     TXA
     ASL A
@@ -157,7 +157,7 @@ CODE_MenuSCCalculateSpritePos:
     LDA.L DATA16_MenuSCSpritePositions,X
     PLX
     RTS
-CODE_CheckIfRoundIsOpen:
+SUB_CheckIfRoundIsOpen:
     print "Round is open check at ",pc
     PHB
     PHK
@@ -206,7 +206,7 @@ CODE_CheckIfRoundIsOpen:
         CLC
         PLB
         RTS
-CODE_HighlightRoundLockSprites:
+SUB_HighlightRoundLockSprites:
     LDA.W WRAM7E_StageClearRoundIndex ; (roundIndex-1)*6
     DEC A
     ASL A
@@ -238,7 +238,7 @@ DATA16_MenuSCSpritePositions:
     dw $70E7,$80BF,$80C7,$80CF,$80D7,$80DF
     dw $B06F,$C047,$C04F,$C057,$C05F,$C067
     dw $B0E7,$C0BF,$C0C7,$C0CF,$C0D7,$C0DF
-CODE_TriggerSpecialStage:
+SUB_TriggerSpecialStage:
     LDA.W #$0006
     STA.W WRAM7E_GameSubstate
     LDA.W #$0001
@@ -248,7 +248,7 @@ CODE_TriggerSpecialStage:
     STA.W WRAM7E_StageClearStageIndex
     RTS
 
-CODE_DisplaySCTracker:
+SUB_DisplaySCTracker:
     LDA.W #$0C6C ; 'S'
     STA.L $7E228E
     LDA.W #$0C5C ; 'C'
@@ -293,7 +293,7 @@ CODE_DisplaySCTracker:
     STA.L $7E22A4
 
     ; TODO: Implement tracker
-    LDA.W #$0000
+    TDC
     SEP #$20
     LDA.L SRAM_StageClearReceivedSpecialStages
     SEC
@@ -339,7 +339,7 @@ CODE_NewStageClearCustomSave:
     LDA.W #$0001
     STA.W WRAM7E_StageClearStageIndex
     STZ.W $0340
-    JSR.W CODE_SetLocalRoundClears
+    JSR.W SUB_SetLocalRoundClears
     STZ.W $0346
     LDA.L SRAM_StageClearScore_Lo
     STA.W WRAM7E_Score_Lo
@@ -355,7 +355,7 @@ CODE_NewStageClearCustomSave:
     PLP
     RTL
 
-CODE_SetLocalRoundClears:
+SUB_SetLocalRoundClears:
     LDA.L SRAM_StageClearLastStageUnlock
     AND.W #$00FF
     BEQ .NoLastStage
@@ -368,7 +368,7 @@ CODE_SetLocalRoundClears:
     RTS
 
 CODE_MenuSCState2CustomCode11:
-    LDA.W #$0000
+    TDC
     STA.L $7E96E3
     STA.L $7E96E5
     STA.L $7E9973
@@ -380,7 +380,7 @@ CODE_MenuSCState2CustomCode11:
     STA.L $7E9610
     LDA.W #$0008
     STA.W WRAM83_GameSubstate
-    LDA.W #$0000
+    TDC
     STA.L WRAM_MenuCursorX
     STA.L $7E96EB
     STA.L WRAM_MenuCursorY

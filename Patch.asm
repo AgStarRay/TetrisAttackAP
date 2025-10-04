@@ -186,7 +186,7 @@ incsrc "InjectionsVersus.asm"
 
 
 ;;;;;;;;;;;;
-; Bank A0 = injected locations, items, settings, dialogue, and sprites
+; Bank A0 = locations, items, settings, text/dialogue, and sprites
 ;;;;;;;;;;;;
 ; 32 KB reserved for all location data, starting items, settings, hint strings, and graphics
 ; Stage Clear Goal Flags
@@ -340,257 +340,13 @@ incbin "custommenugraphics.bin"
 ;;;;;;;;;;;;
 org $A18000
 
-CODE_NewCrashHandler:
-    PHY
-    PHX
-    PHA
-    PHB
-    PHP
-    PHK
-    PLB
-    PEA $0000
-    PLD
-    ; After all this, the stack pointer has decreased by 7-10 bytes
-    REP #$FF
-    SEP #$10
-    ; Stop anything from interrupting or blocking this code
-    LDX.B #$00
-    STX.W SNES80_Interrupt_Enable
-    LDX.B #$80
-    STX.W SNES80_Screen_Display
-    STX.W WRAM80_CurrentBrightness
-    LDA.L $7EFFFE
-    CMP.W #$5243
-    BNE .Part1
-    BRL .Part2
-    .Part1:
-    LDA.W #$5243 ; "CR"
-    STA.L $7EFFFE
-    STA.B $00
-    LDA.W #$5341 ; "AS"
-    STA.B $02
-    ; Upload debug graphics
-    STZ.W $01B0
-    REP #$10
-    LDY.W #DATA_DebugGraphicsVRAMDMA
-    JSL.L CODE_CreateVRAMDMA
-    SEP #$10
-    ; Capture P for later
-    PLY
-    STY.B $06
-    ; Set up PPU to display the numbers
-    LDX.B #$81
-    STX.W SNES80_CGRAM_Addr
-    LDX.B #$00
-    STX.W SNES80_CGRAM_Write
-    STX.W SNES80_CGRAM_Write
-    LDX.B #$FF
-    STX.W SNES80_CGRAM_Write
-    STX.W SNES80_CGRAM_Write
-    LDX.B #$00
-    STX.W SNES80_Object_Character_Sizes
-    STX.W SNES80_WindowObj_Mask_Settings
-    STZ.W SNES80_OAM_Addr_Lo
-    
-    ; Write to OAM
-    LDA.W #$0000
-    STA.B $04
-    LDY.B #$0C
-    JSR.W CODE_DebugAddSprite
-    LDY.B #$10
-    JSR.W CODE_DebugAddSprite
-    LDY.B #$0A
-    JSR.W CODE_DebugAddSprite
-    LDY.B #$11
-    JSR.W CODE_DebugAddSprite
-    LDY.B #$12
-    JSR.W CODE_DebugAddSprite
-    LDA.W #$001C
-    STA.B $04
-    LDY.B #$0D
-    JSR.W CODE_DebugAddSprite
-    LDY.B #$16
-    JSR.W CODE_DebugAddSprite
-    PLY
-    JSR.W CODE_DebugPrintByte ; DB
-    DEC.B $04
-    LDY.B #$17
-    JSR.W CODE_DebugAddSprite
-    LDA.W $06
-    BIT.W #$0020 ; Check if P had M set
-    BEQ .MWasNotSet
-        PLY
-        JSR.W CODE_DebugPrintByte ; A (8-bit)
-        BRA .DoneWithA
-    .MWasNotSet:
-        PLA
-        JSR.W CODE_DebugPrintWord ; A (16-bit)
-    .DoneWithA:
-    LDY.B #$18
-    JSR.W CODE_DebugAddSprite
-    LDA.W $06
-    BIT.W #$0010 ; Check if P had X set
-    BEQ .XWasNotSet
-        PLY
-        JSR.W CODE_DebugPrintByte ; X (8-bit)
-        LDY.B #$19
-        JSR.W CODE_DebugAddSprite
-        PLY
-        JSR.W CODE_DebugPrintByte ; Y (8-bit)
-        BRA .DoneWithXY
-    .XWasNotSet:
-        PLA
-        JSR.W CODE_DebugPrintWord ; X (16-bit)
-        LDY.B #$19
-        JSR.W CODE_DebugAddSprite
-        PLA
-        JSR.W CODE_DebugPrintWord ; Y (16-bit)
-    .DoneWithXY:
-    LDA.W #$0012
-    STA.B $04
-    LDY.B #$14
-    JSR.W CODE_DebugAddSprite
-    TSC
-    INC A
-    INC A
-    INC A
-    INC A
-    JSR.W CODE_DebugPrintWord ; S
-    LDA.W #$0018
-    STA.B $04
-    LDY.B #$15
-    JSR.W CODE_DebugAddSprite
-    LDA.B $01,S
-    TAY
-    JSR.W CODE_DebugPrintByte ; P
-    LDA.W #$0006
-    STA.B $04
-    LDA.L WRAM_ErrorCode
-    JSR.W CODE_DebugPrintWord ; Error code
-    DEC.B $04
-    LDY.B #$13
-    JSR.W CODE_DebugAddSprite
-    LDA.B $04,S
-    TAY
-    JSR.W CODE_DebugPrintByte ; PB
-    DEC.B $04
-    LDA.B $02,S
-    DEC A ; BRK stores S after execution, meaning PC is 2 higher than the cause
-    DEC A
-    JSR.W CODE_DebugPrintWord ; PC
-    LDA.W #$0058
-    STA.B $04
-    TSC
-    SEC
-    SBC.W #$00FF
-    TCS
-    LDX.B #$28
-    ; When reading the stack data, subtract 2 for suspected JSR or 3 for suspected JSL
-    .StackData:
-        STX.B $06
-        TXA
-        AND.W #$0007
-        BNE .SameRow
-            LDA.B $04
-            CLC
-            ADC.W #$0008
-            STA.B $04
-        .SameRow:
-        PLY
-        LDA.B $FF,S ; Open bus prints $FF
-        TAY
-        JSR.W CODE_DebugPrintByte
-        LDX.B $06
-        DEX
-    BNE .StackData
-    ; Hide the rest of the sprites under the word "CRASH!" and set all size types and bit 8 of X positions to 0
-    LDX.B #$13
-    LDY.B #$00
-    .SizeClears:
-        STY.W SNES80_OAM_Write
-        STY.W SNES80_OAM_Write
-        STY.W SNES80_OAM_Write
-        STY.W SNES80_OAM_Write
-        DEX
-    BNE .SizeClears
-
-    ; Present new screen
-    LDA.W #$4548 ; "HE"
-    STA.B $04
-    .Part2:
-    LDX.B #$0F
-    STX.W SNES80_Screen_Display
-    LDA.W #$2144 ; "D!"
-    STA.B $06
-    WAI
-    STP
-
-CODE_DebugPrintWord:
-    TAY
-    STY.B $09
-    STA.B $0A
-    AND.W #$F000
-    XBA
-    LSR A
-    LSR A
-    LSR A
-    LSR A
-    TAY
-    JSR.W CODE_DebugAddSprite
-    LDA.B $0A
-    AND.W #$0F00
-    XBA
-    TAY
-    JSR.W CODE_DebugAddSprite
-    LDY.B $09
-    JSR.W CODE_DebugPrintByte
-    RTS
-CODE_DebugPrintByte:
-    STY.B $08
-    TYA
-    AND.W #$00F0
-    LSR A
-    LSR A
-    LSR A
-    LSR A
-    TAY
-    JSR.W CODE_DebugAddSprite
-    LDY.B $08
-    TYA
-    AND.W #$000F
-    TAY
-    JSR.W CODE_DebugAddSprite
-    INC.B $04
-    RTS
-CODE_DebugAddSprite:
-    LDA.B $04
-    ASL A
-    ASL A
-    ASL A
-    TAX
-    STX.W SNES80_OAM_Write
-    LDA.B $04
-    LSR A
-    LSR A
-    AND.W #$01F8
-    STA.B $0C
-    LSR A
-    LSR A
-    CLC
-    ADC.B $0C
-    TAX
-    STX.W SNES80_OAM_Write
-    STY.W SNES80_OAM_Write
-    LDX.B #$30
-    STX.W SNES80_OAM_Write
-    INC.B $04
-    RTS
+incsrc "CrashHandler.asm"
 
 CODE_SRAMHealthCheck:
     PHP
     REP #$30
     PHA
-    LDA.W #$0000
+    TDC
     STA.L SRAM_ArmCrash
     LDA.L WRAM_AntipiracyFlag
     BNE .WriteSuccessful
@@ -598,14 +354,14 @@ CODE_SRAMHealthCheck:
         STA.L WRAM_ErrorCode
         BRK
     .WriteSuccessful:
-    LDA.W #$0000
+    TDC
     STA.L WRAM_ErrorCode
     STA.L WRAM_AntipiracyFlag
     JSL.L CODE_SRAMValidation
     LDA.W #$0001
     STA.L SRAM_ArmCrash
-    JSR.W CODE_InitializeSaveFile
-    JSR.W CODE_ComputeSRAMChecksum
+    JSR.W SUB_InitializeSaveFile
+    JSR.W SUB_ComputeSRAMChecksum
     CMP.L SRAM_SaveChecksum
     BEQ .GoodToGo
         PHA ; re-computed checksum
@@ -615,7 +371,7 @@ CODE_SRAMHealthCheck:
         STA.L WRAM_ErrorCode
         BRK
     .GoodToGo:
-    LDA.W #$0000
+    TDC
     LDX.W #(SRAM_End-SRAM_StartOfWorkArea-2)
     CODE_ClearSRAMWorkArea:
         STA.L SRAM_StartOfWorkArea,X
@@ -628,7 +384,7 @@ CODE_SRAMHealthCheck:
     PLP
     RTL
 
-CODE_InitializeSaveFile:
+SUB_InitializeSaveFile:
     PHX
     !RunLength = SRAM_UnlocksRegionEnd-SRAM_UnlocksRegionStart
     print "SRAM region is ",dec(!RunLength)," bytes long, being copied at ",pc
@@ -649,11 +405,11 @@ CODE_SRAMSave:
     PHP
     REP #$30
     PHA
-    LDA.W #$0000
+    TDC
     STA.L SRAM_SaveChecksum
     LDA.W #$FFFF
     STA.L SRAM_SaveChecksumComplement
-    JSR.W CODE_ComputeSRAMChecksum
+    JSR.W SUB_ComputeSRAMChecksum
     STA.L SRAM_SaveChecksum
     EOR.W #$FFFF
     STA.L SRAM_SaveChecksumComplement
@@ -668,7 +424,7 @@ CODE_SRAMValidation:
     REP #$30
     PHA
     PHX
-    JSR.W CODE_ComputeSRAMChecksum
+    JSR.W SUB_ComputeSRAMChecksum
     PHA ; computed checksum
     CMP.L SRAM_SaveChecksum
     BNE CODE_DoSaveWipe
@@ -678,7 +434,7 @@ CODE_SRAMValidation:
         CODE_DoSaveWipe:
         LDA.L SRAM_ArmCrash
         PHA
-        LDA.W #$0000
+        TDC
         LDX.W #(SRAM_End-4)
         CODE_SaveWipeLoop:
             STA.L $700002,X
@@ -701,8 +457,8 @@ CODE_SRAMValidation:
     PLP
     RTL
 
-CODE_ComputeSRAMChecksum:
-    LDA.W #$0000
+SUB_ComputeSRAMChecksum:
+    TDC
     LDX.W #(SRAM_StartOfWorkArea-4)
     CODE_SRAMChecksum_KeepGoing:
         CLC
@@ -753,16 +509,16 @@ CODE_StateMachineLogic:
 
 CODE_TitleScreenCustomCode3:
     print "New title screen state 3 code at ",pc
-    LDA.W #$0000
+    TDC
     STA.L WRAM_CurrentlyPlaying
     LDA.L $7E661A
     BEQ .End
-    JSR.W CODE_TitleScreenAPWiggle
+    JSR.W SUB_TitleScreenAPWiggle
     LDA.B WRAM00_Pad1Press
     ORA.B WRAM00_Pad2Press
     BEQ .End
         ; Set next title screen action to immediately be Yoshi giving the peace sign
-        LDA.W #$0000
+        TDC
         STA.L $7E6612
         LDA.W #$C905
         STA.L $7E6614
@@ -775,15 +531,15 @@ CODE_TitleScreenCustomCode3:
 
 CODE_TitleScreenCustomCode4:
     print "New title screen state 4 code at ",pc
-    JSR.W CODE_TitleScreenAPWiggle
+    JSR.W SUB_TitleScreenAPWiggle
     LDA.L $7E662C
     BEQ .End
     INC.W $02A2
     .End:
     RTL
 
-CODE_TitleScreenAPWiggle:
-    ; TODO: Wiggle the * AP sprite up and down
+SUB_TitleScreenAPWiggle:
+    ; TODO: Wiggle the * AP sprite up and down, 30 free sprite slots and 2 free sprite palettes
     RTS
 
 CODE_MenuDataModification:
@@ -869,7 +625,7 @@ CODE_NewMainMenuState8:
     STA.L SNI_ReceiveCheck
     LDA.W #1
     STA.L WRAM_SNIFramesBeforePoll
-    LDA.W #$0000
+    TDC
     STA.L $7E952C
     STA.L $7E9532
     STA.L $7E9534
@@ -879,16 +635,18 @@ CODE_NewMainMenuState8:
 CODE_NewMainMenuState9:
     print "New main menu state 9 routine at ",pc
     ; TODO_AFTER: Disallow access to modes that are not included
-    ;Debug button press
-    ; TODO: Allow the player to trigger the Hint screen after clearing a mode
+    ; Debug button press
     LDA.L WRAM7E_Pad1Press
-    BIT.W #$0060
+    BIT.W #$4040
     BEQ .SkipSpecialCheck
+        ; TODO: Display control for the Hint screen after one is obtained
+        ; TODO: Take control of the Hint screen
+        ; TODO: Make this instance of the Hint screen go back to the main menu
         ;LDA.W #$0017
         ;STA.W WRAM7E_GameState
-        ;LDA.W #$0000
+        ;TDC
         ;STA.W WRAM7E_GameSubstate
-        ;LDA.W #$0000
+        ;TDC
         ;STA.W WRAM_VsMenuSubstate
     .SkipSpecialCheck:
 
@@ -964,12 +722,12 @@ CODE_NewMainMenuState9:
         STA.W WRAM7E_GameSubstate
     .DidNotPressB:
     .CursorDidNotMove:
-        LDA.W #$0000
+        TDC
         BRA .EndSelection
     .CursorMoved:
         JSL.L CODE_8384DB_JSR
         %play_cursor_sound()
-        LDA.W #$0000
+        TDC
         STA.L $7E99D1
         LDA.W #$0001
     .EndSelection:
@@ -988,21 +746,21 @@ CODE_NewMainMenuState9:
     LDA.L WRAM_1POptionIndex
     CMP.W #$0002
     BNE .NotSC
-        JSR.W CODE_DisplaySCTracker
+        JSR.W SUB_DisplaySCTracker
         BRA .RenderBG1
     .NotSC:
     CMP.W #$0003
     BNE .NotPZ
-        JSR.W CODE_DisplayPZTracker
+        JSR.W SUB_DisplayPZTracker
         BRA .RenderBG1
     .NotPZ:
-    JSR.W CODE_DisplayVSTracker
+    JSR.W SUB_DisplayVSTracker
     .RenderBG1:
-    JSR.W CODE_PrintSNIState
-    JSR.W CODE_RenderCustomMenuBG1
+    JSR.W SUB_PrintSNIState
+    JSR.W SUB_RenderCustomMenuBG1
     RTL
 
-CODE_PrintSNIState:
+SUB_PrintSNIState:
     LDA.L SNI_ReceivedItemNumber
     CMP.L SNI_ReceiveCheck
     BEQ .Connected
@@ -1050,7 +808,7 @@ DATA16_SNIStateOffline1:
 DATA16_SNIStateOffline2:
     dw $106C,$1067,$1062,$100E,$106D,$1062,$1066,$105E,$1068,$106E,$106D,$1077,$1077,$100E ; purple version
 
-CODE_RenderCustomMenuBG1:
+SUB_RenderCustomMenuBG1:
     PHB
     PHK
     PLB
@@ -1131,7 +889,7 @@ CODE_ScanIncomingArchipelagoItems:
         LDA.L #300
         STA.L WRAM_SNIFramesBeforePoll
         ; Set action code to zero to avoid syncing problems
-        LDA.W #$0000
+        TDC
         STA.L SNI_ReceivedItemActionCode
         ; Save the new checksum
         JSL.L CODE_SRAMSave
@@ -1154,26 +912,26 @@ CODE_ScanIncomingArchipelagoItems:
         PLP
         RTL
 PTR16_ArchipelagoActions:
-    dw CODE_ArchipelagoDoNothing
-    dw CODE_ArchipelagoWriteValue
-    dw CODE_ArchipelagoWriteReceivedItem
-    dw CODE_ArchipelagoGrantedLastStage
-    dw CODE_ArchipelagoORValue
-    dw CODE_ArchipelagoMarkComplete
-    dw CODE_ArchipelagoWriteReceivedCharacter
-    dw CODE_ArchipelagoAddScore
-    dw CODE_ArchipelagoMarkWon
-CODE_ArchipelagoDoNothing:
+    dw SUB_ArchipelagoDoNothing
+    dw SUB_ArchipelagoWriteValue
+    dw SUB_ArchipelagoWriteReceivedItem
+    dw SUB_ArchipelagoGrantedLastStage
+    dw SUB_ArchipelagoORValue
+    dw SUB_ArchipelagoMarkComplete
+    dw SUB_ArchipelagoWriteReceivedCharacter
+    dw SUB_ArchipelagoAddScore
+    dw SUB_ArchipelagoMarkWon
+SUB_ArchipelagoDoNothing:
     RTS
 ; Action Code 0003: play sound effect, set ID to arg, and prepare the reveal
-CODE_ArchipelagoGrantedLastStage:
+SUB_ArchipelagoGrantedLastStage:
     LDA.W #$0001
     STA.L SRAM_LastStageRevealFlag ; TODO: Use this flag to do a custom reveal
     LDA.W #$00F7
     STA.L WRAM7E_NewSoundEvent
-    BRA CODE_ArchipelagoWriteValue
+    BRA SUB_ArchipelagoWriteValue
 ; Action Code 0002: play sound effect and set ID to arg
-CODE_ArchipelagoWriteReceivedItem:
+SUB_ArchipelagoWriteReceivedItem:
     LDA.W WRAM7E_GameState
     CMP.W #$0003
     BCC .MenuPopSound
@@ -1184,7 +942,7 @@ CODE_ArchipelagoWriteReceivedItem:
     .PlaySound:
     STA.L WRAM7E_NewSoundEvent
 ; Action Code 0001: set ID to arg
-CODE_ArchipelagoWriteValue:
+SUB_ArchipelagoWriteValue:
     LDA.L SNI_ReceivedItemID
     TAX
     SEP #$20
@@ -1193,7 +951,7 @@ CODE_ArchipelagoWriteValue:
     REP #$20
     RTS
 ; Action Code 0004: ORwise set ID to arg in two places
-CODE_ArchipelagoORValue:
+SUB_ArchipelagoORValue:
     LDA.L SNI_ReceivedItemID
     TAX
     SEP #$20
@@ -1204,12 +962,12 @@ CODE_ArchipelagoORValue:
     REP #$20
     RTS
 ; Action Code 0005: ORwise set ID to arg in two places and play sound
-CODE_ArchipelagoMarkComplete:
+SUB_ArchipelagoMarkComplete:
     LDA.W #$00F6
     STA.L WRAM7E_NewSoundEvent
-    BRA CODE_ArchipelagoORValue
+    BRA SUB_ArchipelagoORValue
 ; Action Code 0006: play unique sound effect and set ID to arg
-CODE_ArchipelagoWriteReceivedCharacter:
+SUB_ArchipelagoWriteReceivedCharacter:
     print "Receive character code at ",pc
     LDA.W #$004C
     STA.L WRAM7E_NewSoundEvent
@@ -1227,9 +985,9 @@ CODE_ArchipelagoWriteReceivedCharacter:
         REP #$20
         JSL.L CODE_ShowImFreeMsg
     .NotInVs:
-    BRA CODE_ArchipelagoWriteValue
+    BRA SUB_ArchipelagoWriteValue
 ; Action Code 0007: add chain or combo score
-CODE_ArchipelagoAddScore:
+SUB_ArchipelagoAddScore:
     LDA.W WRAM7E_Score_Lo
     STA.W WRAM7E_CheckpointScore_Lo
     LDA.W WRAM7E_Score_Hi
@@ -1278,12 +1036,12 @@ CODE_ArchipelagoAddScore:
         PLA
         JSL.L CODE_82E1AF_JSR
     .End:
-    BRL CODE_ArchipelagoWriteValue
+    BRL SUB_ArchipelagoWriteValue
 ; Action Code 0008: ORwise set ID to arg in two places and play unique sound
-CODE_ArchipelagoMarkWon:
+SUB_ArchipelagoMarkWon:
     LDA.W #$0013
     STA.L WRAM7E_NewSoundEvent
-    BRL CODE_ArchipelagoORValue
+    BRL SUB_ArchipelagoORValue
 
 DATA8_BitmaskToBitCount:
     db $00,$01,$01,$02,$01,$02,$02,$03
@@ -1306,7 +1064,7 @@ DATA8_BitmaskToBitCount:
 
 
 ;;;;;;;;;;;;
-; Bank A2 = Stage Clear, Puzzle, and Vs injected subroutines
+; Bank A2 = Gameplay injected subroutines
 ;;;;;;;;;;;;
 org $A28000
 

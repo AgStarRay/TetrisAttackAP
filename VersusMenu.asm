@@ -1,6 +1,6 @@
 CODE_VsSelection:
     print "Main menu Vs selection at ", pc
-    JSR.W CODE_KeepVsStageInRange
+    JSR.W SUB_KeepVsStageInRange
     LDA.L WRAM_1POptionIndex
     CMP.W #$0004
     BNE .SkipVsSelect
@@ -24,11 +24,11 @@ CODE_VsSelection:
             LDA.L WRAM_VsStageNumber
             INC A
             STA.L WRAM_VsStageNumber
-            JSR.W CODE_KeepVsStageInRange
+            JSR.W SUB_KeepVsStageInRange
         .NoRightSignal:
         .DisplayStageState:
-        JSR.W CODE_VsDisplayStageSelector
-        JSR.W CODE_VsDisplayStageState
+        JSR.W SUB_VsDisplayStageSelector
+        JSR.W SUB_VsDisplayStageState
     .SkipVsSelect:
     ; Set the two characters on the Vs option
     LDA.L WRAM_VsStageNumber
@@ -44,16 +44,16 @@ CODE_VsSelection:
     STA.L $7E24A2
     RTL
 
-CODE_KeepVsStageInRange:
+SUB_KeepVsStageInRange:
     LDA.L WRAM_VsStageNumber
     CMP.W #$000C
     BCC .StageNumberInRange
-        LDA.W #$0000
+        TDC
     .StageNumberInRange:
     STA.L WRAM_VsStageNumber
     RTS
 
-CODE_VsDisplayStageSelector:
+SUB_VsDisplayStageSelector:
     LDY.W WRAM7E_OAMAppendAddr
     %append_sprite($98, $5B, $30BF)
     %append_sprite($98, $63, $30BE)
@@ -62,7 +62,7 @@ CODE_VsDisplayStageSelector:
     STY.W WRAM7E_OAMAppendAddr
     RTS
 
-CODE_VsDisplayStageState:
+SUB_VsDisplayStageState:
     LDY.W WRAM7E_OAMAppendAddr
     LDA.L WRAM_VsStageNumber
     TAX
@@ -133,10 +133,10 @@ CODE_VsDisplayStageState:
         CLC
         ADC.B $00
         STA.B $00
-        LDA.W #$0000
+        TDC
         .DifficultyLoop:
             STA.B $04
-            JSR.W CODE_VsDisplayDifficultyState
+            JSR.W SUB_VsDisplayDifficultyState
             LDA.B $06
             ASL A
             STA.B $06
@@ -147,7 +147,7 @@ CODE_VsDisplayStageState:
     .End:
     STY.W WRAM7E_OAMAppendAddr
     RTS
-CODE_VsDisplayDifficultyState:
+SUB_VsDisplayDifficultyState:
     LDA.B $02
     STA.W WRAM7E_OAMBuffer,Y
     CLC
@@ -220,7 +220,7 @@ CODE_ArchipelagoVsMenu:
     PHB
     PHK
     PLB
-    JSR.W CODE_VsDisplayStageState
+    JSR.W SUB_VsDisplayStageState
     LDA.W WRAM7E_Pad1Repeat
     BIT.W #$0200
     BEQ .NoLeftSignal
@@ -248,7 +248,7 @@ CODE_ArchipelagoVsMenu:
     BIT.W #$8000
     BEQ .DidNotPressB
         LDX.W #DATA16_VsText
-        JSR.W CODE_PrintVsOptionText
+        JSR.W SUB_PrintVsOptionText
         LDA.W #$0004
         STA.W WRAM7E_NewSoundEvent
         LDA.W #$0009
@@ -279,7 +279,7 @@ CODE_ArchipelagoVsMenu:
         TAX
         LDA.W PTR16_DifficultyText,X
         TAX
-        JSR.W CODE_PrintVsOptionText
+        JSR.W SUB_PrintVsOptionText
         LDY.W WRAM7E_OAMAppendAddr
         LDA.W WRAM7E_VsDifficulty
         ASL A
@@ -296,12 +296,12 @@ CODE_ArchipelagoVsMenu:
         INY
         STY.W WRAM7E_OAMAppendAddr
     .UpdateBG1:
-    JSR.W CODE_DisplayVSTracker
-    JSR.W CODE_RenderCustomMenuBG1
+    JSR.W SUB_DisplayVSTracker
+    JSR.W SUB_RenderCustomMenuBG1
     PLB
     RTL
 
-CODE_PrintVsOptionText:
+SUB_PrintVsOptionText:
     print "Vs Option text print at ",pc
     LDA.W #$000B
     LDY.W #$2490
@@ -324,7 +324,7 @@ DATA16_HardText:
 DATA16_VHardText:
     dw $106F,$107A,$1061,$105A,$106B,$105D
 
-CODE_DisplayVSTracker:
+SUB_DisplayVSTracker:
     LDA.W #$146F
     STA.L $7E228E
     LDA.W #$146C
@@ -463,7 +463,7 @@ TEXT_Character12Name: ; Bowser
 
 CODE_NewVsCustomSave:
     REP #$30
-    LDA.W #$0000
+    TDC
     STA.L WRAM_VsCompletedAStage
     STA.L WRAM_VsContinueCount
     ; TODO: Find out what this value does, comes from $7E943E

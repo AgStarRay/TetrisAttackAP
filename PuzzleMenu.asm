@@ -46,7 +46,7 @@ CODE_ArchipelagoPuzzleMenu:
         BEQ .SkipSwitchLogic
             LDA.W #$0001
             STA.W WRAM7E_NewSoundEvent
-            LDA.W #$0000
+            TDC
             STA.L WRAM_PrintedSwitchMessage
             LDA.W WRAM7E_PuzzleSecretFlag
             EOR.W #$0001
@@ -64,7 +64,7 @@ CODE_ArchipelagoPuzzleMenu:
         BEQ .Jump1
             JMP.W .Jump8
         .Jump1:
-            LDA.W #$0000
+            TDC
             STA.L $7E9973
             LDA.W WRAM7E_CharacterIndex1
             JSL.L CODE_83B0AC_JSR
@@ -85,13 +85,13 @@ CODE_ArchipelagoPuzzleMenu:
     SBC.L DATA16_A1_PuzzleUnlockOffsets
     TAX
     LDY.W WRAM7E_OAMAppendAddr
-    LDA.W #$0000
+    TDC
     .MenuPZCustomGraphicsLoop:
         STA.L WRAM_LoopCounter
         LDA.L SRAM_PuzzleLevel1Unlocks,X
         AND.W #$00FF
         BNE .SkipLockSprite
-            JSR.W CODE_MenuPZCalculateSpritePos
+            JSR.W SUB_MenuPZCalculateSpritePos
             STA.W WRAM7E_OAMBuffer,Y
             INY
             INY
@@ -119,13 +119,13 @@ CODE_ArchipelagoPuzzleMenu:
         AND.W #$00FF
         CMP.L WRAM_CheckComparisonTemp
         BCS .SkipAPSprite
-            %append_sprite_sub(CODE_MenuPZCalculateSpritePos, GFX_APSprite)
+            %append_sprite_sub(SUB_MenuPZCalculateSpritePos, GFX_APSprite)
             BRA .NextSlot
         .SkipAPSprite:
         LDA.L SRAM_PuzzleLevel1Clears,X
         BIT.W #$0040
         BEQ .SkipClearSprite
-            %append_sprite_sub(CODE_MenuPZCalculateSpritePos, GFX_StageClearSprite)
+            %append_sprite_sub(SUB_MenuPZCalculateSpritePos, GFX_StageClearSprite)
             BRA .NextSlot
         .SkipClearSprite:
         .NextSlot:
@@ -166,7 +166,7 @@ CODE_ArchipelagoPuzzleMenu:
     JSL.L CODE_838E7D_JSR
     LDA.L $7E95EA
     BEQ .Jump6
-        LDA.W #$0000
+        TDC
         STA.L $7E9965
         STA.L $7E9979
     .Jump6:
@@ -175,7 +175,7 @@ CODE_ArchipelagoPuzzleMenu:
     LDA.B WRAM00_Pad1Press
     BEQ .SkipUnhighlightLocks
     .UnhighlightLocks:
-        LDA.W #$0000
+        TDC
         STA.L WRAM_LockSpriteValues
         STA.L WRAM_LockSpriteValues+2
         STA.L WRAM_LockSpriteValues+4
@@ -186,11 +186,11 @@ CODE_ArchipelagoPuzzleMenu:
     LDA.B WRAM00_Pad1Press
     BIT.W #$1080
     BEQ .Jump7
-        JSR.W CODE_CheckIfPuzzleLevelIsOpen
+        JSR.W SUB_CheckIfPuzzleLevelIsOpen
         BCS .CanPlay
             LDA.W #$0004
             STA.W WRAM7E_NewSoundEvent
-            JSR.W CODE_HighlightPuzzleLockSprites
+            JSR.W SUB_HighlightPuzzleLockSprites
             BRA .Jump8
         .CanPlay:
         LDA.W #$0005
@@ -198,7 +198,7 @@ CODE_ArchipelagoPuzzleMenu:
         STA.W WRAM7E_NewSoundEvent
         LDA.L WRAM_MenuCursorY
         BNE .LowerRow
-            LDA.W #$0000
+            TDC
             BRA .UseRowIndex
         .LowerRow:
             LDA.W #$0005
@@ -225,7 +225,7 @@ CODE_ArchipelagoPuzzleMenu:
     JSL.L CODE_83B59B_JSR
     RTL
 
-CODE_MenuPZCalculateSpritePos:
+SUB_MenuPZCalculateSpritePos:
     PHX
     LDA.L WRAM_LoopCounter
     ASL A
@@ -233,7 +233,7 @@ CODE_MenuPZCalculateSpritePos:
     LDA.L DATA16_MenuPZSpritePositions,X
     PLX
     RTS
-CODE_CheckIfPuzzleLevelIsOpen:
+SUB_CheckIfPuzzleLevelIsOpen:
     print "Puzzle level is open check at ",pc
     PHB
     PHK
@@ -287,7 +287,7 @@ CODE_CheckIfPuzzleLevelIsOpen:
         CLC
         PLB
         RTS
-CODE_HighlightPuzzleLockSprites:
+SUB_HighlightPuzzleLockSprites:
     LDA.W #$0001
     STA.L WRAM_LockSpriteValues
     LDA.L DATA8_PuzzleFlags
@@ -319,7 +319,7 @@ DATA16_MenuPZSpritePositions:
     dw $7580,$7588,$7590,$7598,$75A0
     dw $8580,$8588,$8590,$8598,$85A0
 
-CODE_DisplayPZTracker:
+SUB_DisplayPZTracker:
     LDA.W #$1069
     STA.L $7E228E
     LDA.W #$1073
@@ -402,7 +402,7 @@ CODE_NewPuzzleCustomSave:
 CODE_MenuPZState2CustomCode9:
     LDA.W #$0003
     STA.W WRAM7E_GameSubstate
-    LDA.W #$0000
+    TDC
     STA.L WRAM_PrintedSwitchMessage
     STA.W WRAM7E_MenuProcedure
     STA.L $7E961C
@@ -411,7 +411,7 @@ CODE_MenuPZState2CustomCode10:
     LDA.L $7E9618
     BNE .Jump1
     INC.W WRAM7E_GameSubstate
-    LDA.W #$0000
+    TDC
     STA.L WRAM_PrintedSwitchMessage
     STA.W WRAM7E_MenuProcedure
     STA.L $7E9973

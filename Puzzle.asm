@@ -33,7 +33,7 @@ CODE_OnPuzzleWin:
     print "Puzzle clear logic at ",pc
     REP #$30
     JSL.L CODE_SRAMValidation
-    LDA.W #$0000
+    TDC
     STA.L WRAM_PuzzleFanfareIsRoundClear
     LDA.W WRAM7E_CharacterIndex1
     ASL A
@@ -117,7 +117,7 @@ CODE_PuzzleCustomRoundClearCheck:
     BEQ .End
         LDA.W #$0004
         STA.W $199C
-        JSL.L CODE_8091B2
+        JSL.L CODE_FL_8091B2
     .End:
     RTL
 
@@ -155,7 +155,7 @@ CODE_PuzzleCustomCreditsCheck:
     .RollCredits:
         LDA.W #$0001
         STA.L $7E6395
-        JSL.L CODE_86D7D8
+        JSL.L CODE_FL_86D7D8
         LDA.W #$0015
         STA.W WRAM7E_GameSubstate
         STZ.B WRAM7E_GameFrames
@@ -176,15 +176,15 @@ CODE_PuzzleResultSummonNextStage:
     LDA.W WRAM7E_RoundClearIndicator
     BNE .EndRound
     INC.W WRAM7E_PuzzleStageIndex
-    JSR.W CODE_SkipIfClearedOrLockedPuzzle
-    JSR.W CODE_SkipIfClearedOrLockedPuzzle
-    JSR.W CODE_SkipIfClearedOrLockedPuzzle
-    JSR.W CODE_SkipIfClearedOrLockedPuzzle
-    JSR.W CODE_SkipIfClearedOrLockedPuzzle
-    JSR.W CODE_SkipIfClearedOrLockedPuzzle
-    JSR.W CODE_SkipIfClearedOrLockedPuzzle
-    JSR.W CODE_SkipIfClearedOrLockedPuzzle
-    JSR.W CODE_SkipIfClearedOrLockedPuzzle
+    JSR.W SUB_SkipIfClearedOrLockedPuzzle
+    JSR.W SUB_SkipIfClearedOrLockedPuzzle
+    JSR.W SUB_SkipIfClearedOrLockedPuzzle
+    JSR.W SUB_SkipIfClearedOrLockedPuzzle
+    JSR.W SUB_SkipIfClearedOrLockedPuzzle
+    JSR.W SUB_SkipIfClearedOrLockedPuzzle
+    JSR.W SUB_SkipIfClearedOrLockedPuzzle
+    JSR.W SUB_SkipIfClearedOrLockedPuzzle
+    JSR.W SUB_SkipIfClearedOrLockedPuzzle
     LDA.W WRAM7E_PuzzleStageIndex
     CMP.W #$000A
     BCC .AdvanceToNextStage
@@ -192,14 +192,14 @@ CODE_PuzzleResultSummonNextStage:
         LDA.W #$0001
         BRA .SetEndModeIndicator
     .AdvanceToNextStage:
-        LDA.W #$0000
+        TDC
     .SetEndModeIndicator:
     STA.L WRAM_EndModeIndicator
     INC.W WRAM7E_GameSubstate
     RTL
 
 
-CODE_SkipIfClearedOrLockedPuzzle:
+SUB_SkipIfClearedOrLockedPuzzle:
     print "Cleared puzzle check code at ",pc
     LDA.W WRAM7E_CharacterIndex1
     ASL A
@@ -273,7 +273,7 @@ CODE_SetNewPuzzleIndex:
     AND.W #$00FF
     INC A
     STA.L WRAM_AssignedMoveCount
-    LDA.W #$0000
+    TDC
     STA.L $7E638B
     STA.L $7E638F
     RTL
