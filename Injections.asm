@@ -29,6 +29,26 @@ org $80A6FB
 JML.L CODE_StateMachineLogic
 
 
+; Have the Archipelago display be rendered every frame while Stop time is inactive
+org $829439
+BEQ CODE_829449
+org $829453
+BEQ CODE_829449
+
+; Replace the level display for Endless and Stage Clear
+org $8297E1
+JML.L CODE_CustomLevelDisplay
+NOP
+
+; Control when shock panels generate
+org $82E8E1
+JSL.L CODE_NewShockPanelLogic
+
+; Create event call when a shock panel is generated
+org $82EB05
+JSL.L CODE_OnShockPanelCreated
+RTS
+
 ; Mess with the 1Player Game tilemap
 org $83A3E7
 dw $024C,$A85C
@@ -99,6 +119,11 @@ org $8493FF ;TODO: Figure out the text graphics
 
 
 ; Remove password text literal
+; Intercept after random stack creation
+org $87948F
+JSL.L CODE_OnStackCreated
+
+
 org $89D5F7
 RTL
 

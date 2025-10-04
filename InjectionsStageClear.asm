@@ -44,6 +44,10 @@ org $85AF96
 JML.L CODE_SCUpdateHPWithCustomIndex
 
 
+; Stop Stage Clear from re-rendering the Level display when starting the next stage
+org $879211
+JSL.L CODE_CustomLevelDisplay
+
 ; Control how Bowser's HP bar fills up at the beginning
 org $87A7ED
 JML.L CODE_SCBowserFillHP

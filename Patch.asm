@@ -92,6 +92,9 @@ SRAM_PuzzleSecretLevel4Unlocks = $7000C3
 SRAM_PuzzleSecretLevel5Unlocks = $7000CE
 SRAM_PuzzleSecretLevel6Unlocks = $7000D9
 SRAM_PuzzlePanelUnlocks = $7000E4
+SRAM_ShockPanelsReceived = $7000EA
+;SRAM_??? = $7000EC
+;SRAM_??? = $7000EE
 SRAM_ScoreInstanceCounts = $700100
 ;SRAM_??? = $700126
 SRAM_UnlocksRegionEnd = $700200
@@ -124,7 +127,8 @@ SRAM_PuzzleSecretLevel3Clears = $7002B1
 SRAM_PuzzleSecretLevel4Clears = $7002BC
 SRAM_PuzzleSecretLevel5Clears = $7002C7
 SRAM_PuzzleSecretLevel6Clears = $7002D2
-; SRAM_??? = $7002DD
+SRAM_ClearedShockPanels = $7002DD
+; SRAM_??? = $7002DF
 ; A redundant copy of the clears at location + #$101
 ;   The game must write to both locations with the same value to be considered checks
 ;   Chose #$101 as it is a prime number and makes it less likely to falsely trigger from crashes
@@ -163,6 +167,9 @@ WRAM_TempMovB = $7EFF56
 WRAM_CurrentlyPlaying = $7EFF58
 WRAM_SNIFramesBeforePoll = $7EFF5A
 WRAM_VsCompletedAStage = $7EFF5C
+WRAM_ShockPanelCheckNumber = $7EFF60
+WRAM_ShockPanelsToNextCheck = $7EFF62
+WRAM_ShockPanelsInBoard = $7EFF64
 WRAM_ErrorCode = $7EFFEC
 
 ;;;;;;;;;;;;
@@ -232,6 +239,8 @@ DATA8_DeathlinkHint = $A08006
 DATA16_StageClearTotalChecks = $A08008
 DATA16_PuzzleTotalChecks = $A0800A
 DATA16_VersusTotalChecks = $A0800C
+DATA8_ShockPanelChecks = $A0800E
+DATA8_ShockPanelsPerCheck = $A08010
 LOC_StageClearChecksStart = $A08020
 ; Checks are bitmasks, sum up all the 1's to get the total number of checks
 ; If the SRAM values are less than these, display the AP sprite
@@ -478,6 +487,12 @@ CODE_StateMachineLogic:
     LDA.W WRAM7E_GameState
     CMP.W #$0004
     BNE .SkipGameplayLogic
+        LDA.L WRAM7E_PlayersIndicator
+        BNE .EndShockPanelCheck
+            LDA.W WRAM7E_ShockPanelCombo
+            BEQ .EndShockPanelCheck
+                JSR.W SUB_AddShockPanelClears
+        .EndShockPanelCheck:
         JSL.L CODE_ScanIncomingArchipelagoItems
         LDA.L SNI_DeathlinkPendingEvent
         BEQ .GoToStateMachine
@@ -506,6 +521,22 @@ CODE_StateMachineLogic:
     REP #$30
     PHP
     JML.L $80A703
+
+SUB_AddShockPanelClears:
+    CLC
+    ADC.L SRAM_ClearedShockPanels
+    BPL .PositiveTotal
+        LDA.W #$7FFF
+    .PositiveTotal:
+    STA.L SRAM_ClearedShockPanels
+    LDA.L WRAM_ShockPanelsInBoard
+    SEC
+    SBC.W WRAM7E_ShockPanelCombo
+    STA.L WRAM_ShockPanelsInBoard
+    STZ.W WRAM7E_ShockPanelCombo
+    JSL.L CODE_SRAMValidation
+    JSL.L CODE_SRAMSave
+    RTS
 
 CODE_TitleScreenCustomCode3:
     print "New title screen state 3 code at ",pc
@@ -1071,6 +1102,466 @@ org $A28000
 incsrc "StageClear.asm"
 incsrc "Puzzle.asm"
 incsrc "Versus.asm"
+
+CODE_OnStackCreated:
+    TDC
+    STA.L WRAM_ShockPanelsInBoard
+    JSL.L CODE_UpdateStackTilemap
+    RTL
+
+CODE_NewShockPanelLogic:
+    print "Shock panel generation code at ",pc
+    LDA.L WRAM_ModeIndex
+    CMP.W #$0002
+    BEQ .StageClear
+    CMP.W #$0003
+    BEQ .Puzzle
+    LDA.W WRAM7E_PlayersIndicator
+    BNE .Versus
+    .Endless:
+        TDC ; Disable shock panels
+        RTL
+    .StageClear:
+        LDA.L WRAM7E_StageClearSpecialIndex
+        BNE .SpecialStage
+        .NormalStage:
+            ; TODO: Implement algorithm for incrementing pending shock panels
+            ; Enable shock panel generation if the remaining number of panels is greater than the number in the board minus 2
+            LDA.L SRAM_ShockPanelsReceived
+            DEC A
+            SEC
+            SBC.L SRAM_ClearedShockPanels
+            BMI .NoMorePanels
+            SEC
+            SBC.L WRAM_ShockPanelsInBoard
+            INC A
+            INC A
+            BMI .NoMorePanels
+                ; Shift right 4 times
+                ; This means if there are 0-46 panels remaining, level 1 shock panel generation is used
+                ; If there are more than 46 panels remaining, level 2 shock panel generation is used
+                LSR A
+                LSR A
+                LSR A
+                LSR A
+                INC A
+                STA.W WRAM7E_P1PendingShockPanels
+                LDA.W #$0004 ; Enable shock panels
+                RTL
+        .SpecialStage:
+        .NoMorePanels:
+            TDC ; Disable shock panels
+            RTL
+    .Puzzle:
+        TDC ; Disable shock panels
+        RTL
+    .Versus:
+        ; Pending shock panels controlled by vanilla Versus
+        LDA.W #$0004 ; Enable shock panels
+        RTL
+
+CODE_OnShockPanelCreated:
+    print "On shock panel created at ",pc
+    LDA.W WRAM7E_PlayersIndicator
+    BNE .Vs
+    .Solo:
+        LDA.L WRAM_ShockPanelsInBoard
+        INC A
+        STA.L WRAM_ShockPanelsInBoard
+        RTL
+    .Vs:
+        LDA.W $0354
+        BNE .P2
+        .P1:
+            LDA.W WRAM82_P1PendingShockPanels
+            BEQ +
+                DEC.W WRAM82_P1PendingShockPanels
+          + RTL
+        .P2:
+            LDA.W WRAM82_P2PendingShockPanels
+            BEQ +
+                DEC.W WRAM82_P2PendingShockPanels
+          + RTL
+
+CODE_CustomLevelDisplay:
+    LDA.L DATA8_ShockPanelChecks
+    BEQ .LevelDisplay
+    LDA.L WRAM_ModeIndex
+    BEQ .ArchipelagoDisplay
+    LDA.W WRAM7E_StageClearSpecialIndex
+    BEQ .ArchipelagoDisplay
+    .LevelDisplay:
+        ; Display Level
+        TDC
+        STA.L $7E22F4
+        JML.L $8297E6
+    .ArchipelagoDisplay:
+        ; Display Archipelago values
+        TDC
+        STA.L $7E22F0
+        STA.L $7E22F2
+        STA.L $7E22F4
+        STA.L $7E22F6
+        STA.L $7E2330
+        STA.L $7E2332
+        STA.L $7E2334
+        STA.L $7E2336
+        STA.L $7E2370
+        STA.L $7E2372
+        STA.L $7E2374
+        STA.L $7E2376
+        STA.L $7E2378
+        STA.L $7E237A
+        STA.L $7E23B0
+        STA.L $7E23B2
+        STA.L $7E23B4
+        STA.L $7E23B6
+        STA.L $7E23B8
+        STA.L $7E23BA
+        LDA.L DATA8_ShockPanelChecks
+        BNE .ShockPanelStats
+        .NoShockPanelStats:
+            TDC
+            STA.L $7E23F0
+            STA.L $7E23F2
+            STA.L $7E23F4
+            STA.L $7E23F6
+            STA.L $7E23F8
+            STA.L $7E23FA
+            STA.L $7E2430
+            STA.L $7E2432
+            STA.L $7E2434
+            STA.L $7E2436
+            STA.L $7E2438
+            STA.L $7E243A
+            RTL
+        .ShockPanelStats:
+            print "Shock panel stats display at ",pc
+            JSR.W SUB_UpdateShockPanelsToNextCheck
+            LDA.L DATA8_ShockPanelsPerCheck
+            CMP.W #$0005
+            BCC .Usable
+                LDA.W #$0005
+            .Usable:
+            ASL A
+            TAX
+            JSR.W (PTR16_RenderShockPanelStats,X)
+            RTL
+SUB_UpdateShockPanelsToNextCheck:
+    LDA.L WRAM_ShockPanelCheckNumber
+    CMP.L DATA8_ShockPanelChecks
+    BCC .Proceed
+        RTS
+    .Proceed:
+    ; Update if ShockPanelsToNextCheck is less than or equal to the total cleared
+    LDA.L WRAM_ShockPanelsToNextCheck
+    CMP.L SRAM_ClearedShockPanels
+    BCC .Update
+    BEQ .Update
+        RTS
+    .Update:
+        CLC
+        ADC.L DATA8_ShockPanelsPerCheck
+        STA.L WRAM_ShockPanelsToNextCheck
+        LDA.L WRAM_ShockPanelCheckNumber
+        INC A
+        STA.L WRAM_ShockPanelCheckNumber
+        BRA SUB_UpdateShockPanelsToNextCheck
+
+PTR16_RenderShockPanelStats:
+    dw SUB_RenderShockPanelStats1Per
+    dw SUB_RenderShockPanelStats1Per
+    dw SUB_RenderShockPanelStats5AndUp
+    dw SUB_RenderShockPanelStats5AndUp
+    dw SUB_RenderShockPanelStats5AndUp
+    dw SUB_RenderShockPanelStats5AndUp
+SUB_RenderShockPanelStats1Per:
+    TDC
+    STA.L $7E23F4
+    STA.L $7E2434
+    LDA.L WRAM_ShockPanelsToNextCheck
+    SEC
+    SBC.L SRAM_ClearedShockPanels
+    BMI .ToGoIsNonPositive
+    BEQ .ToGoIsNonPositive
+    .ToGoIsPositive:
+        ; Blue shock panel
+        LDA.W #$0D78
+        STA.L $7E23F0
+        LDA.W #$0D6A
+        STA.L $7E23F2
+        LDA.W #$0D79
+        STA.L $7E2430
+        LDA.W #$0D7A
+        STA.L $7E2432
+        JMP.W SUB_DisplayShockPanelsRemainingBig
+    .ToGoIsNonPositive:
+        ; Gray shock panel
+        LDA.W #$0178
+        STA.L $7E23F0
+        LDA.W #$016A
+        STA.L $7E23F2
+        LDA.W #$0179
+        STA.L $7E2430
+        LDA.W #$017A
+        STA.L $7E2432
+        JMP.W SUB_DisplayShockPanelsRemainingBig
+CODE_RenderShockPanelStats2Per:
+    ; TODO_AFTER: When panels per check is 2, change to be one big pink number and have the shock panel become half gray
+    TDC
+    STA.L $7E23F4
+    STA.L $7E2434
+    LDA.L WRAM_ShockPanelsToNextCheck
+    SEC
+    SBC.L SRAM_ClearedShockPanels
+    BMI .ToGoIsNonPositive
+    BEQ .ToGoIsNonPositive
+    .ToGoIsPositive:
+        ; Blue shock panel
+        LDA.W #$0D78
+        STA.L $7E23F0
+        LDA.W #$0D6A
+        STA.L $7E23F2
+        LDA.W #$0D79
+        STA.L $7E2430
+        LDA.W #$0D7A
+        STA.L $7E2432
+        JMP.W SUB_DisplayShockPanelsRemainingBig
+    .ToGoIsNonPositive:
+        ; Gray shock panel
+        LDA.W #$0178
+        STA.L $7E23F0
+        LDA.W #$016A
+        STA.L $7E23F2
+        LDA.W #$0179
+        STA.L $7E2430
+        LDA.W #$017A
+        STA.L $7E2432
+        JMP.W SUB_DisplayShockPanelsRemainingBig
+SUB_RenderShockPanelStats3Per:
+    ; TODO_AFTER: When panels per check is 3, change to be a pink number and a blue bar that turns gray
+    JSR.W SUB_DisplayShockPanelsRemainingSmall
+    RTS
+SUB_RenderShockPanelStats4Per:
+    ; TODO_AFTER: When panels per check is 4, change to be one big pink number and have the shock panel chip gray
+    JSR.W SUB_DisplayShockPanelsRemainingBig
+    RTS
+SUB_RenderShockPanelStats5AndUp:
+    TDC
+    STA.L $7E23F4
+    STA.L $7E23F6
+    LDA.L WRAM_ShockPanelsToNextCheck
+    SEC
+    SBC.L SRAM_ClearedShockPanels
+    BMI .ToGoIsNonPositive
+    BEQ .ToGoIsNonPositive
+    .ToGoIsPositive:
+        PHA
+        ; Blue shock panel
+        LDA.W #$0D78
+        STA.L $7E23F0
+        LDA.W #$0D6A
+        STA.L $7E23F2
+        LDA.W #$0D79
+        STA.L $7E2430
+        LDA.W #$0D7A
+        STA.L $7E2432
+        PLA
+        JSL.L CODE_16BitHexToDec
+        LDA.W $0376
+        BEQ .LessThan10
+            ORA.W #$0C30
+            BRA .Place10
+        .LessThan10:
+            TDC
+        .Place10:
+        STA.L $7E23F8
+        LDA.W $0378
+        ORA.W #$0C30
+        STA.L $7E23FA
+        JSR.W SUB_DisplayShockPanelsRemainingSmall
+        RTS
+    .ToGoIsNonPositive:
+        ; Gray shock panel
+        LDA.W #$0178
+        STA.L $7E23F0
+        LDA.W #$016A
+        STA.L $7E23F2
+        LDA.W #$0179
+        STA.L $7E2430
+        LDA.W #$017A
+        STA.L $7E2432
+        TDC
+        STA.L $7E23F8
+        STA.L $7E23FA
+        JSR.W SUB_DisplayShockPanelsRemainingSmall
+        RTS
+SUB_DisplayShockPanelsRemainingBig:
+    print "Remaining shock panels big display at ",pc
+    LDA.L SRAM_ShockPanelsReceived
+    SEC
+    SBC.L SRAM_ClearedShockPanels
+    BEQ .RemainingIsZero
+    BPL .RemainingIsPositive
+    .RemainingIsNegative:
+        EOR.W #$FFFF
+        INC A
+        ORA.W #$0010
+        STA.L $7E23FA
+        CLC
+        ADC.W #$0010
+        STA.L $7E243A
+        LDA.W #$00BF ; '-'
+        STA.L $7E23F8
+        TDC
+        STA.L $7E2438
+        STA.L $7E23F6
+        STA.L $7E2436
+        RTS
+    .RemainingIsZero:
+        LDA.W #$0010 ; '0'
+        STA.L $7E23FA
+        LDA.W #$0020 ; '0'
+        STA.L $7E243A
+        TDC
+        STA.L $7E23F8
+        STA.L $7E2438
+        STA.L $7E23F6
+        STA.L $7E2436
+        RTS
+    .RemainingIsPositive:
+    CMP.W #$000A
+    BCC .LessThan10Remaining
+        JSL.L CODE_16BitHexToDec
+        CLC ; only needed once
+        LDA.W $0378
+        ORA.W #$1010
+        STA.L $7E23FA
+        ADC.W #$0010
+        STA.L $7E243A
+        LDA.W $0376
+        ORA.W #$1010
+        STA.L $7E23F8
+        ADC.W #$0010
+        STA.L $7E2438
+        LDA.W $0374
+        BEQ .No100
+        ORA.W #$1010
+        STA.L $7E23F6
+        ADC.W #$0010
+        STA.L $7E2436
+        RTS
+        .No100:
+        TDC
+        STA.L $7E23F6
+        STA.L $7E2436
+        RTS
+    .LessThan10Remaining:
+        CMP.L WRAM_ShockPanelsInBoard
+        BCS .StillNeedToSpawnMore
+        .AllPanelsPresent:
+            STA.B $00
+            LDA.W WRAM7E_GameFrames
+            AND.W #$0010
+            XBA
+            ORA.W #$0010
+            CLC
+            ADC.B $00
+            BRA .PutDigit
+        .StillNeedToSpawnMore:
+            ORA.W #$1010
+        .PutDigit:
+        STA.L $7E23FA
+        CLC
+        ADC.W #$0010
+        STA.L $7E243A
+        TDC
+        STA.L $7E23F8
+        STA.L $7E2438
+        STA.L $7E23F6
+        STA.L $7E2436
+        RTS
+SUB_DisplayShockPanelsRemainingSmall:
+    print "Remaining shock panels small display at ",pc
+    VAR_1sDigit = $7E243A
+    VAR_10sDigit = $7E2438
+    VAR_100sDigit = $7E2436
+    VAR_1000sDigit = $7E2434
+    LDA.L SRAM_ShockPanelsReceived
+    SEC
+    SBC.L SRAM_ClearedShockPanels
+    BEQ .RemainingIsZero
+    BPL .RemainingIsPositive
+    .RemainingIsNegative:
+        EOR.W #$FFFF
+        INC A
+        ORA.W #$0030
+        STA.L VAR_1sDigit
+        LDA.W #$00BF ; '-'
+        STA.L VAR_10sDigit
+        TDC
+        STA.L VAR_100sDigit
+        STA.L VAR_1000sDigit
+        RTS
+    .RemainingIsZero:
+        LDA.W #$0030 ; '0'
+        STA.L VAR_1sDigit
+        TDC
+        STA.L VAR_10sDigit
+        STA.L VAR_100sDigit
+        STA.L VAR_1000sDigit
+        RTS
+    .RemainingIsPositive:
+    CMP.W #$000A
+    BCC .LessThan10Remaining
+        JSL.L CODE_16BitHexToDec
+        LDA.W $0378
+        ORA.W #$1030
+        STA.L VAR_1sDigit
+        LDA.W $0376
+        ORA.W #$1030
+        STA.L VAR_10sDigit
+        LDA.W $0374
+        BEQ .No100
+        ORA.W #$1030
+        STA.L VAR_100sDigit
+        LDA.W $0372
+        BEQ .No1000
+        ORA.W #$1030
+        STA.L VAR_1000sDigit
+        RTS
+        .No100:
+        TDC
+        STA.L VAR_100sDigit
+        STA.L VAR_1000sDigit
+        RTS
+        .No1000:
+        TDC
+        STA.L VAR_1000sDigit
+        RTS
+    .LessThan10Remaining:
+        CMP.L WRAM_ShockPanelsInBoard
+        BCS .StillNeedToSpawnMore
+        .AllPanelsPresent:
+            STA.B $00
+            LDA.W WRAM7E_GameFrames
+            INC A
+            INC A
+            AND.W #$0010
+            XBA
+            ORA.W #$0030
+            CLC
+            ADC.B $00
+            BRA .PutDigit
+        .StillNeedToSpawnMore:
+            ORA.W #$1030
+        .PutDigit:
+        STA.L VAR_1sDigit
+        TDC
+        STA.L VAR_10sDigit
+        STA.L VAR_100sDigit
+        STA.L VAR_1000sDigit
+        RTS
 
 ;;;;;;;;;;;;
 ; Bank A3 = miscellaneous

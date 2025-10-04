@@ -58,6 +58,11 @@ org DATA8_PuzzleSecretLevel5Checks
 db $01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01
 org DATA8_PuzzleSecretLevel6Checks
 db $01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01
+org DATA8_ShockPanelChecks
+db 100
+org DATA8_ShockPanelsPerCheck
+db 2
+
 
 org DATA8_InitialUnlocks
 ; Stage Clear
