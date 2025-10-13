@@ -8,21 +8,38 @@ CODE_OnVsTopOut:
             LDA.L WRAM_VsStageNumber
             TAX
             SEP #$20
+            LDA.B #MsgCode_VSStageClear
+            STA.L SNI_MessageRequest
             LDA.L WRAM7E_VsDifficulty
             TAY
-            LDA.B #$7F
-          - CPY.W #$0003
+            LDA.B #$3F
+            CPY.W #$0003
             BEQ +
-                LSR A
+              - LSR A
                 INY
-                BRA -
-          + STA.L SRAM_VersusStageClears,X
+                CPY.W #$0003
+                BNE -
+          + PHA
+            ; If the goal difficulty is less than or equal to the current difficulty, set the goal bit
+            LDA.L DATA8_GoalVersus
+            AND.B #%00011
+            CMP.L WRAM7E_VsDifficulty
+            BCC .Goal
+            BEQ .Goal
+            .NonGoal:
+                PLA
+                BRA .SetClears
+            .Goal:
+                PLA
+                ORA.B #%01000000
+            .SetClears:
+            STA.L SRAM_VersusStageClears,X
             STA.L SRAM_VersusStageClears+$101,X
             STA.L WRAM_VsCompletedAStage
             LDX.W #$07
             .AllSavedLoop:
                 LDA.L SRAM_VersusStageClears,X
-                AND.B #%01111000
+                AND.B #%00111100
                 BEQ .StillSomeoneToSave
                 DEX
                 BPL .AllSavedLoop
@@ -34,17 +51,19 @@ CODE_OnVsTopOut:
         .SkipClear:
         RTL
     .PlayerToppedOut:
+        LDA.W #MsgCode_Deathlink
+        STA.L SNI_MessageRequest
         LDA.W WRAM7E_OpponentToppedOut
         BNE .OpponentAlsoToppedOut
             LDA.L WRAM_VsStageNumber
             CLC
-            ADC.W #$0010
+            ADC.W #DeathlinkCode_VsTopOutStage1
             STA.L SNI_DeathlinkTrigger
             RTL
         .OpponentAlsoToppedOut:
             LDA.L WRAM_VsStageNumber
             CLC
-            ADC.W #$0020
+            ADC.W #DeathlinkCode_VsDrawStage1
             STA.L SNI_DeathlinkTrigger
             RTL
 

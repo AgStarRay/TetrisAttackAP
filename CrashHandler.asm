@@ -17,13 +17,14 @@ CODE_NewCrashHandler:
     LDX.B #$80
     STX.W SNES80_Screen_Display
     STX.W WRAM80_CurrentBrightness
-    LDA.L $7EFFFE
+    ; If crashing during the crash, skip the graphics and part of the word "CRASHED!"
+    LDA.L WRAM_DoubleCrashCheck
     CMP.W #$5243
     BNE .Part1
     BRL .Part2
     .Part1:
     LDA.W #$5243 ; "CR"
-    STA.L $7EFFFE
+    STA.L WRAM_DoubleCrashCheck
     STA.B $00
     LDA.W #$5341 ; "AS"
     STA.B $02

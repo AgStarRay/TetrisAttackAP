@@ -20,6 +20,20 @@ macro append_sprite_sub(subroutine, sprite)
     INY
 endmacro
 
+macro append_text(pos_x, pos_y, src_ptr, base_sprite)
+    LDA.W #<pos_x>
+    STA.B $CF
+    LDA.W #<pos_y>
+    STA.B $D1
+    LDA.W #<src_ptr[1]>
+    STA.B $D4
+    LDA.W #<src_ptr[0]>
+    STA.B $D3
+    LDA.W #<base_sprite>
+    STA.B $D6
+    JSL.L CODE_AppendText
+endmacro
+
 macro load_goal_difficulty()
     LDA.L DATA8_GoalVersus
     AND.W #%00011

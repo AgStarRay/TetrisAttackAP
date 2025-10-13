@@ -37,6 +37,17 @@ DeathlinkCode_VsDrawStage10 = $0029 ; {Player} topped out simultaneously with Na
 DeathlinkCode_VsDrawStage11 = $002A ; {Player} topped out simultaneously with Kamek
 DeathlinkCode_VsDrawStage12 = $002B ; {Player} topped out simultaneously with Bowser
 
+MsgCode_Blank = 0
+MsgCode_Deathlink = 1
+MsgCode_Last = 2
+MsgCode_SCStageClear = 3
+MsgCode_SCRoundClear = 4
+MsgCode_PZStageClear = 5
+MsgCode_PZRoundClear = 6
+MsgCode_VSStageClear = 7
+MsgCode_SpecialStageSurvived = 8
+
+
 ; SRAM structure
 ; 0000-0001 = SRAM health check
 ; 0002-001B = local save data
@@ -92,7 +103,7 @@ SRAM_PuzzleSecretLevel4Unlocks = $7000C3
 SRAM_PuzzleSecretLevel5Unlocks = $7000CE
 SRAM_PuzzleSecretLevel6Unlocks = $7000D9
 SRAM_PuzzlePanelUnlocks = $7000E4
-SRAM_ShockPanelsReceived = $7000EA
+SRAM_ShockPanelsReceived = $7000EA ; 16-bit
 ;SRAM_??? = $7000EC
 ;SRAM_??? = $7000EE
 SRAM_ScoreInstanceCounts = $700100
@@ -129,6 +140,7 @@ SRAM_PuzzleSecretLevel5Clears = $7002C7
 SRAM_PuzzleSecretLevel6Clears = $7002D2
 SRAM_ClearedShockPanels = $7002DD
 ; SRAM_??? = $7002DF
+LOC_EndOfClearData = $7002FF
 ; A redundant copy of the clears at location + #$101
 ;   The game must write to both locations with the same value to be considered checks
 ;   Chose #$101 as it is a prime number and makes it less likely to falsely trigger from crashes
@@ -139,8 +151,11 @@ SNI_ReceivedItemID = $700402
 SNI_ReceivedItemActionCode = $700404
 SNI_ReceivedItemArg = $700406
 SNI_ReceiveCheck = $700408
+SNI_MessageRequest = $70040A
 SNI_DeathlinkTrigger = $70040C
 SNI_DeathlinkPendingEvent = $70040E
+SNI_MessageID = $700410
+SNI_Message = $700412
 ; Random variables
 SRAM_LastStageRevealFlag = $700710
 SRAM_StageClearPendingUnlocksExist = $700712
@@ -150,7 +165,6 @@ SRAM_GoingThroughPendingUnlocks = $700718
 SRAM_PendingUnlocksCounted = $70071A
 SRAM_PendingUnlocksPointer = $70071C
 ; Regions
-SRAM_PendingUnlocks = $700500
 SRAM_End = $700800
 
 ; WRAM - hopefully not affected by base game
@@ -170,7 +184,9 @@ WRAM_VsCompletedAStage = $7EFF5C
 WRAM_ShockPanelCheckNumber = $7EFF60
 WRAM_ShockPanelsToNextCheck = $7EFF62
 WRAM_ShockPanelsInBoard = $7EFF64
-WRAM_ErrorCode = $7EFFEC
+WRAM_StatusMessage = $7EFFB0
+WRAM_DoubleCrashCheck = $7EFFFC
+WRAM_ErrorCode = $7EFFFE
 
 ;;;;;;;;;;;;
 ; Modifications
@@ -241,6 +257,11 @@ DATA16_PuzzleTotalChecks = $A0800A
 DATA16_VersusTotalChecks = $A0800C
 DATA8_ShockPanelChecks = $A0800E
 DATA8_ShockPanelsPerCheck = $A08010
+; Music Event Filter
+;   ------sm
+;         s = stage music and intermission music
+;          m = title screen and menu music
+DATA8_MusicEventFilter = $A08012
 LOC_StageClearChecksStart = $A08020
 ; Checks are bitmasks, sum up all the 1's to get the total number of checks
 ; If the SRAM values are less than these, display the AP sprite
@@ -263,21 +284,24 @@ DATA8_StageClearRound4Checks = $A08032
 DATA8_StageClearRound5Checks = $A08038
 DATA8_StageClearRound6Checks = $A0803E
 DATA8_StageClearLastStageChecks = $A08044
-LOC_StageClearChecksEnd = $A08044
+LOC_StageClearChecksEnd = $A08045
 DATA8_StageClearSpecialStageCount = $A08045
 LOC_VersusChecksStart = $A08046
 ; Versus stage checks bitmask (0-11)
-;   ivhne-cs
+;   igvhnecs
 ;   i = indefinite checks
-;    v = Very Hard clear, also used for local clear data
-;     h = Hard clear, also used for local clear data
-;      n = Normal clear, also used for local clear data
-;       e = reserved bit for local clear data (Easy)
+;    g = reserved bit for local clear data (Goal difficulty)
+;     v = Very Hard clear, also used for local clear data
+;      h = Hard clear, also used for local clear data
+;       n = Normal clear, also used for local clear data
+;        e = reserved bit for local clear data (Easy); this can be repurposed though
 ;         c = character unlock check, normally for stages 1 to 8
 ;          s = stage clear/Easy check, only used if multiple difficulties are not involved
 DATA8_VersusStageChecks = $A08046
-DATA8_VersusCharacterChecks = $A08052
-LOC_VersusChecksEnd = $A08059
+DATA8_VersusNoContinueChecks = $A08052
+DATA8_VersusAllFriendsNormalChecks = $A08056
+;DATA8_VersusCharacterChecks = $A08057
+LOC_VersusChecksEnd = $A08057
 ; Puzzle level checks bitmask (0)
 ;   il-----r
 ;   i = indefinite checks
@@ -301,7 +325,7 @@ DATA8_PuzzleSecretLevel3Checks = $A080B8
 DATA8_PuzzleSecretLevel4Checks = $A080C3
 DATA8_PuzzleSecretLevel5Checks = $A080CE
 DATA8_PuzzleSecretLevel6Checks = $A080D9
-LOC_PuzzleChecksEnd = $A080E3
+LOC_PuzzleChecksEnd = $A080E4
 ;DATA_??? = $A080E4
 DATA8_InitialUnlocks = $A08120 ; The values in SRAM are bitwise OR'd with this data
 DATA16_SCSpecialBowserHP = $A08300
@@ -320,7 +344,9 @@ DATA16_SCLastBowserHealAmount = $A08318
 DATA16_SCHPBarColors = $A0831A
 DATA8_VsCustomLastStages = $A08330
 DATA8_VsMinimumDifficulties = $A08334
-;DATA16_??? = $A08340
+TEXT_WorldVersion = $A08340
+TEXT_SlotName = $A08348
+LOC_EndOfAPData = $A08358
 org DATA16_SCSpecialBowserHP
 dw 600
 org DATA16_SCLastBowserHP
@@ -337,8 +363,19 @@ org DATA8_VsCustomLastStages
 db $09,$0A,$0B,$0B
 org DATA8_VsMinimumDifficulties
 db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$01,$02
+org TEXT_WorldVersion
+db "???",0,0,0,0,0
+org TEXT_SlotName
+db "Unnamed Slot",0,0,0,0
 ;incsrc "testsave.asm"
-org $A0F800
+
+org LOC_EndOfAPData
+TEXT_OfflineMessage:
+    db 30,$0A,"SNI OFFLINE!",$0A,"                "
+TEXT_OfflineMessageEnd:
+
+org $A0F000
+incsrc "ASCII.asm"
 GFX_DebugGraphics:
 incbin "debuggraphics.bin"
 GFX_CustomMenuGraphics:
@@ -370,6 +407,7 @@ CODE_SRAMHealthCheck:
     LDA.W #$0001
     STA.L SRAM_ArmCrash
     JSR.W SUB_InitializeSaveFile
+    JSR.W SUB_InitializeStatusMessage
     JSR.W SUB_ComputeSRAMChecksum
     CMP.L SRAM_SaveChecksum
     BEQ .GoodToGo
@@ -392,7 +430,6 @@ CODE_SRAMHealthCheck:
     PLA
     PLP
     RTL
-
 SUB_InitializeSaveFile:
     PHX
     !RunLength = SRAM_UnlocksRegionEnd-SRAM_UnlocksRegionStart
@@ -407,6 +444,28 @@ SUB_InitializeSaveFile:
         BPL .Loop
     JSL.L CODE_SRAMSave
     PLX
+    RTS
+SUB_InitializeStatusMessage:
+    PHP
+    PHB
+    PEA $A0A0
+    PLB
+    PLB
+    REP #$30
+    LDA.W #TEXT_OfflineMessageEnd-TEXT_OfflineMessage-1
+    LDX.W #TEXT_OfflineMessage
+    LDY.W #WRAM_StatusMessage
+    MVN $7E,bank(TEXT_OfflineMessage)
+    LDA.W #15
+    LDX.W #TEXT_SlotName
+    LDY.W #WRAM_StatusMessage+15
+    MVN $7E,bank(TEXT_SlotName)
+    TDC
+    STA SNI_MessageRequest
+    STA SNI_MessageID
+    STA SNI_Message
+    PLB
+    PLP
     RTS
 
 CODE_SRAMSave:
@@ -427,7 +486,7 @@ CODE_SRAMSave:
     RTL
 
 CODE_SRAMValidation:
-    print "SRAM valiation code at ",pc
+    print "SRAM validation code at ",pc
     ;RTL ; Uncomment this to disable
     PHP
     REP #$30
@@ -487,6 +546,11 @@ CODE_StateMachineLogic:
     LDA.W WRAM7E_GameState
     CMP.W #$0004
     BNE .SkipGameplayLogic
+        LDA.L SNI_MessageRequest
+        BEQ .SkipMessageClear
+            TDC
+            STA.L SNI_MessageRequest
+        .SkipMessageClear:
         LDA.L WRAM7E_PlayersIndicator
         BNE .EndShockPanelCheck
             LDA.W WRAM7E_ShockPanelCombo
@@ -523,18 +587,21 @@ CODE_StateMachineLogic:
     JML.L $80A703
 
 SUB_AddShockPanelClears:
+    print "Shock panel clears save code at ",pc
     CLC
     ADC.L SRAM_ClearedShockPanels
-    BPL .PositiveTotal
+    BVC .DidNotOverflow
         LDA.W #$7FFF
-    .PositiveTotal:
+    .DidNotOverflow:
+    PHA
+    JSL.L CODE_SRAMValidation
+    PLA
     STA.L SRAM_ClearedShockPanels
     LDA.L WRAM_ShockPanelsInBoard
     SEC
     SBC.W WRAM7E_ShockPanelCombo
     STA.L WRAM_ShockPanelsInBoard
     STZ.W WRAM7E_ShockPanelCombo
-    JSL.L CODE_SRAMValidation
     JSL.L CODE_SRAMSave
     RTS
 
@@ -689,6 +756,74 @@ CODE_NewMainMenuState9:
     JSL.L CODE_MenuYoshiDialog_JSR
     LDA.W #$0001
     STA.L $7E96DB
+
+    ; Display goals and cleared modes
+    LDY.W WRAM7E_OAMAppendAddr
+    LDA.L DATA8_GoalStageClear
+    BEQ .NoStageClearGoal
+        LDA.L SRAM_StageClearLastStageClear
+        BIT.W #$0040
+        BEQ .SCNotCleared
+        .SCCleared:
+            %append_sprite($30, $70, GFX_StageClearSprite)
+            BRA +
+        .SCNotCleared:
+            %append_sprite($30, $70, GFX_APSprite)
+    .NoStageClearGoal:
+  + LDA.L DATA8_GoalPuzzle
+    BIT.W #%100
+    BNE .EitherGoal
+    BIT.W #%010
+    BNE .ExtraIsInvolved
+    BIT.W #%001
+    BNE .NormalGoalOnly
+    BRA .NoPuzzleGoals
+    .ExtraIsInvolved:
+    BIT.W #%001
+    BNE .PuzzleAndNormalGoals
+    .ExtraGoalOnly:
+        LDA.L SRAM_PuzzleLevel6Clears
+        BIT.W #$0040
+        BNE .PZCleared
+        BRA .PZNotCleared
+    .PuzzleAndNormalGoals:
+        LDA.L SRAM_PuzzleSecretLevel6Clears
+        BIT.W #$0040
+        BNE .NormalGoalOnly
+        BRA .PZNotCleared
+    .EitherGoal:
+        LDA.L SRAM_PuzzleSecretLevel6Clears
+        BIT.W #$0040
+        BNE .PZCleared
+    .NormalGoalOnly:
+        LDA.L SRAM_PuzzleLevel6Clears
+        BIT.W #$0040
+        BNE .PZCleared
+        ;BRA .PZNotCleared
+    .PZNotCleared:
+        %append_sprite($30, $80, GFX_APSprite)
+        BRA +
+    .PZCleared:
+        %append_sprite($30, $80, GFX_StageClearSprite)
+    .NoPuzzleGoals:
+  + LDA.L DATA8_GoalVersus
+    AND.W #%01100
+    BEQ .NoVersusGoal
+        LSR A
+        LSR A
+        CLC
+        ADC.W #$0008
+        TAX
+        LDA.L SRAM_VersusStageClears,X
+        BIT.W #$0040
+        BEQ .VSNotCleared
+        .VSCleared:
+            %append_sprite($30, $90, GFX_StageClearSprite)
+            BRA +
+        .VSNotCleared:
+            %append_sprite($30, $90, GFX_APSprite)
+    .NoVersusGoal:
+  + STY.W WRAM7E_OAMAppendAddr
 
     ; Modified menu selection code
     LDA.L WRAM_MenuPadRepeat
@@ -865,6 +1000,7 @@ GFX_LockSprite = $30BB
 GFX_LockSpriteHighlighted = $3CBB
 GFX_APSprite = $36BC
 GFX_StageClearSprite = $3CCB
+GFX_Interrobang = $33A7
 
 incsrc "StageClearMenu.asm"
 incsrc "PuzzleMenu.asm"
@@ -927,6 +1063,8 @@ CODE_ScanIncomingArchipelagoItems:
         PLP
         RTL
     .NoNewItems:
+        TDC
+        STA.L SNI_ReceivedItemActionCode
         LDA.L WRAM_SNIFramesBeforePoll
         DEC A
         BNE .WaitingOnSNI
@@ -944,14 +1082,17 @@ CODE_ScanIncomingArchipelagoItems:
         RTL
 PTR16_ArchipelagoActions:
     dw SUB_ArchipelagoDoNothing
-    dw SUB_ArchipelagoWriteValue
+    dw SUB_ArchipelagoWrite8BitValue
     dw SUB_ArchipelagoWriteReceivedItem
     dw SUB_ArchipelagoGrantedLastStage
     dw SUB_ArchipelagoORValue
     dw SUB_ArchipelagoMarkComplete
     dw SUB_ArchipelagoWriteReceivedCharacter
     dw SUB_ArchipelagoAddScore
+    ; -
     dw SUB_ArchipelagoMarkWon
+    dw SUB_ArchipelagoWrite16BitValue
+    dw SUB_ArchipelagoWriteShockPanels
 SUB_ArchipelagoDoNothing:
     RTS
 ; Action Code 0003: play sound effect, set ID to arg, and prepare the reveal
@@ -960,7 +1101,7 @@ SUB_ArchipelagoGrantedLastStage:
     STA.L SRAM_LastStageRevealFlag ; TODO: Use this flag to do a custom reveal
     LDA.W #$00F7
     STA.L WRAM7E_NewSoundEvent
-    BRA SUB_ArchipelagoWriteValue
+    BRA SUB_ArchipelagoWrite8BitValue
 ; Action Code 0002: play sound effect and set ID to arg
 SUB_ArchipelagoWriteReceivedItem:
     LDA.W WRAM7E_GameState
@@ -973,7 +1114,7 @@ SUB_ArchipelagoWriteReceivedItem:
     .PlaySound:
     STA.L WRAM7E_NewSoundEvent
 ; Action Code 0001: set ID to arg
-SUB_ArchipelagoWriteValue:
+SUB_ArchipelagoWrite8BitValue:
     LDA.L SNI_ReceivedItemID
     TAX
     SEP #$20
@@ -1016,7 +1157,7 @@ SUB_ArchipelagoWriteReceivedCharacter:
         REP #$20
         JSL.L CODE_ShowImFreeMsg
     .NotInVs:
-    BRA SUB_ArchipelagoWriteValue
+    BRA SUB_ArchipelagoWrite8BitValue
 ; Action Code 0007: add chain or combo score
 SUB_ArchipelagoAddScore:
     LDA.W WRAM7E_Score_Lo
@@ -1067,12 +1208,30 @@ SUB_ArchipelagoAddScore:
         PLA
         JSL.L CODE_82E1AF_JSR
     .End:
-    BRL SUB_ArchipelagoWriteValue
+    BRL SUB_ArchipelagoWrite8BitValue
 ; Action Code 0008: ORwise set ID to arg in two places and play unique sound
 SUB_ArchipelagoMarkWon:
     LDA.W #$0013
     STA.L WRAM7E_NewSoundEvent
     BRL SUB_ArchipelagoORValue
+; Action Code 000A: play sound effect and set ID to arg
+SUB_ArchipelagoWriteShockPanels:
+    LDA.W WRAM7E_GameState
+    CMP.W #$0003
+    BCC .MenuPopSound
+        LDA.W #$0005
+        BRA .PlaySound
+    .MenuPopSound:
+        LDA.W #$0025
+    .PlaySound:
+    STA.L WRAM7E_NewSoundEvent
+; Action Code 0009: set ID to arg
+SUB_ArchipelagoWrite16BitValue:
+    LDA.L SNI_ReceivedItemID
+    TAX
+    LDA.L SNI_ReceivedItemArg
+    STA.L $700000,X
+    RTS
 
 DATA8_BitmaskToBitCount:
     db $00,$01,$01,$02,$01,$02,$02,$03
@@ -1102,6 +1261,39 @@ org $A28000
 incsrc "StageClear.asm"
 incsrc "Puzzle.asm"
 incsrc "Versus.asm"
+
+CODE_FilterMusicEvent:
+    PHX
+    LDA.W WRAM7E_GameState
+    CMP.W #$0011
+    BEQ .Play
+    LDA.L DATA8_MusicEventFilter
+    BIT.W #%01
+    BEQ .MenuIsFine
+    BIT.W #%10
+    BEQ .StageIsFineButNotMenu
+    BRA .DoNotPlay
+    .MenuIsFine:
+    BIT.W #%10
+    BEQ .Play
+    .MenuIsFineButNotStage:
+        LDA.W WRAM7E_GameState
+        CMP.W #$0003
+        BCC .Play
+        BRA .DoNotPlay
+    .StageIsFineButNotMenu:
+        LDA.W WRAM7E_GameState
+        CMP.W #$0003
+        BCS .Play
+        ;BRA .DoNotPlay
+
+    .DoNotPlay:
+        PLX
+        JML.L CODE_8091E2
+    .Play:
+        PLX
+        STX.W WRAM80_APU0QueueA
+        JML.L CODE_8091E2
 
 CODE_OnStackCreated:
     TDC
@@ -1194,7 +1386,10 @@ CODE_CustomLevelDisplay:
         ; Display Level
         TDC
         STA.L $7E22F4
-        JML.L $8297E6
+        STA.L $7E22F6
+        STA.L $7E2334
+        STA.L $7E2336
+        JML.L $829802
     .ArchipelagoDisplay:
         ; Display Archipelago values
         TDC

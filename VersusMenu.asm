@@ -125,7 +125,7 @@ SUB_VsDisplayStageState:
         STA.B $00
         LDA.W #$9877
         STA.B $02
-        LDA.W #$0008
+        LDA.W #$0004
         STA.B $06
         LDA.L DATA8_VsMinimumDifficulties,X
         AND.W #$00FF
@@ -148,6 +148,11 @@ SUB_VsDisplayStageState:
     STY.W WRAM7E_OAMAppendAddr
     RTS
 SUB_VsDisplayDifficultyState:
+    ; $00 is the number of difficulty levels for the selected stage
+    ; $02 is the sprite position
+    ; $04 is the difficulty level
+    ; $06 is the bitmask for the cleared difficulties
+    ; $08 is the minimum difficulty level for the selected stage
     LDA.B $02
     STA.W WRAM7E_OAMBuffer,Y
     CLC
@@ -168,38 +173,59 @@ SUB_VsDisplayDifficultyState:
         INY
         RTS
     .Unlocked:
-        LDA.L SRAM_VersusStageClears,X
-        AND.B $06
-        BEQ .NotCleared
-            LDA.W #GFX_StageClearSprite
-            STA.W WRAM7E_OAMBuffer,Y
-            INY
-            INY
-            RTS
-        .NotCleared:
-            LDA.B $04
-            CMP.B $08
-            BEQ .FirstDifficulty
-                LDA.L DATA8_VersusStageChecks,X
-                AND.B $06
-                BEQ .NotRequired
-                BRA .Required
-            .FirstDifficulty:
-                LDA.L DATA8_VersusStageChecks,X
-                AND.W #%00000011
-                BEQ .NotRequired
-            .Required:
-                LDA.W #GFX_APSprite
-                STA.W WRAM7E_OAMBuffer,Y
-                INY
-                INY
-                RTS
-            .NotRequired:
-                LDA.W #$B0DD
-                STA.W WRAM7E_OAMBuffer,Y
-                INY
-                INY
-                RTS
+    LDA.L SRAM_VersusStageClears,X
+    AND.B $06
+    BEQ .NotCleared
+    .Cleared:
+        LDA.W #GFX_StageClearSprite
+        STA.W WRAM7E_OAMBuffer,Y
+        INY
+        INY
+        RTS
+    .NotCleared:
+    LDA.B $04
+    CMP.B $08
+    BEQ .FirstDifficulty
+    LDA.L DATA8_VersusStageChecks,X
+    AND.B $06
+    BEQ .NoItem
+    BRA .HasItem
+    .FirstDifficulty:
+    LDA.L DATA8_VersusStageChecks,X
+    AND.W #%00000011
+    BEQ .NoItem
+    .HasItem:
+        LDA.W #GFX_APSprite
+        STA.W WRAM7E_OAMBuffer,Y
+        INY
+        INY
+        RTS
+    .NoItem:
+    LDA.L DATA8_GoalVersus
+    AND.W #%01100
+    LSR A
+    LSR A
+    CLC
+    ADC.W #$0008
+    CMP.L WRAM_VsStageNumber
+    BNE .Pointless
+    LDA.L DATA8_GoalVersus
+    print "Check here ",pc
+    AND.W #%00011
+    CMP.B $04
+    BNE .Pointless
+    .Goal: ; If this is the goal stage at the goal difficulty
+        LDA.W #GFX_Interrobang
+        STA.W WRAM7E_OAMBuffer,Y
+        INY
+        INY
+        RTS
+    .Pointless:
+        LDA.W #$B0DD ; "_"
+        STA.W WRAM7E_OAMBuffer,Y
+        INY
+        INY
+        RTS
 
 CODE_ArchipelagoVsMenu:
     JSL.L CODE_ScanIncomingArchipelagoItems

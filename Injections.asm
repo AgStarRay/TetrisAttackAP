@@ -24,6 +24,10 @@ org $808200
 JSL CODE_SRAMHealthCheck
 BRA CODE_80820C
 
+; Filter certain music events
+org $8091D4
+JML.L CODE_FilterMusicEvent
+
 ; Inject logic into the overarching state machine
 org $80A6FB
 JML.L CODE_StateMachineLogic
@@ -39,6 +43,16 @@ BEQ CODE_829449
 org $8297E1
 JML.L CODE_CustomLevelDisplay
 NOP
+
+; Display the password text on the pause screen in Stage Clear 1-1
+org $82A3AC
+BRA CODE_82A3BC
+; Display the password text on the pause screen in Puzzle 1-01
+org $82A3CD
+BRA $82A3D5
+; Display the password text on the pause screen in Versus stage 1
+org $82A720
+BRA CODE_82A72C
 
 ; Control when shock panels generate
 org $82E8E1
@@ -118,19 +132,33 @@ org $8493FF ;TODO: Figure out the text graphics
 ;RTL
 
 
-; Remove password text literal
 ; Intercept after random stack creation
 org $87948F
 JSL.L CODE_OnStackCreated
 
+; Add more ASCII characters
+org $87B99C
+JML.L CODE_UploadFullASCII
 
+; Display the password text on the game over screen in Stage Clear 1-1
+org $87D355
+BRA CODE_87D365
+; Display the password text on the game over screen in Puzzle 1-1
+org $87D38E
+BCC CODE_87D398
+
+
+; Change the password text literal to a custom message provided by SNI
 org $89D5F7
-RTL
+JML.L CODE_CustomMessage
 
 ; Remove password code printing
 org $89D69F
 RTL
 
+; Hide password text during Stage Clear cutscenes
+org $89ED6A
+NOP : NOP : NOP : NOP
 
 ; Redirect the title screen button check code in states 3 and 4
 org $8ABC4E

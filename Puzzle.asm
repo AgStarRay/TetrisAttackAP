@@ -103,6 +103,11 @@ CODE_OnPuzzleWin:
         LDA.B #$00
     .EndRoundClearFlagging:
     STA.L WRAM_PuzzleFanfareIsRoundClear
+    PHA
+    CLC
+    ADC.B #MsgCode_PZStageClear
+    STA.L SNI_MessageRequest
+    PLA
     BEQ .NoFadeOut
         LDA.B #$E1
         STA.W WRAM87_NewMusicEvent
@@ -165,7 +170,9 @@ CODE_PuzzleCustomCreditsCheck:
 
 CODE_OnPuzzleFail:
     ; TODO_AFTER: If rising stacks are possible, add special death message check
-    LDA.W #$0004
+    LDA.W #MsgCode_Deathlink
+    STA.L SNI_MessageRequest
+    LDA.W #DeathlinkCode_PuzzleOutOfMoves
     STA.L SNI_DeathlinkTrigger
     LDA.W #$0001
     STA.L $7E943C

@@ -29,6 +29,7 @@ CODE_OnStageClearWin:
     BEQ .RegularStageClear
         CMP.B #$02
         BNE .SpecialStageClear
+        .LastStageClear:
             LDA.B #$7F
             STA.L SRAM_StageClearLastStageClear
             STA.L SRAM_StageClearLastStageClear+$101
@@ -37,6 +38,8 @@ CODE_OnStageClearWin:
             LDA.L SRAM_StageClearSpecialStageCompletions
             INC A
             STA.L SRAM_StageClearSpecialStageCompletions
+            LDA.B #MsgCode_SpecialStageSurvived
+            STA.L SNI_MessageRequest
             BRL .SaveProgress
     .RegularStageClear:
         print "Regular stage clear logic at ",pc
@@ -90,6 +93,11 @@ CODE_OnStageClearWin:
             LDA.B #$00
         .EndRoundClearFlagging:
         STA.W WRAM7E_RoundClearIndicator
+        PHA
+        CLC
+        ADC.B #MsgCode_SCStageClear
+        STA.L SNI_MessageRequest
+        PLA
         BEQ .NoBravoSound
             REP #$30
             LDA.W #$00FA ; Bravo II sound
@@ -120,6 +128,8 @@ SUB_LastStageUnlock:
     RTS
 
 CODE_OnStageClearTopOut:
+    LDA.W #MsgCode_Deathlink
+    STA.L SNI_MessageRequest
     LDA.W WRAM7E_StageClearSpecialIndex
     INC A
     STA.L SNI_DeathlinkTrigger

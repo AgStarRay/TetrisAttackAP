@@ -328,10 +328,32 @@ SUB_DisplayPZTracker:
     LDX.W #DATA16_PZTrackerLine2
     LDY.W #$22CE
     ;MVN $7E,bank(DATA16_PZTrackerLine2)
-    LDA.W #$0017
-    LDX.W #DATA16_PZTrackerLine3NonExtra
-    LDY.W #$230E
-    MVN $7E,bank(DATA16_PZTrackerLine3Extra)
+    LDA.L DATA8_PuzzleFlags
+    AND.W #%1100
+    CMP.W #%1000
+    BEQ .MiddleIsExtra
+    .MiddleIsNormal:
+        BRA .EndMiddleRow
+    .MiddleIsExtra:
+    .EndMiddleRow:
+
+    LDA.L DATA8_PuzzleFlags
+    BIT.W #%0100
+    BEQ .SkipExtraRow
+    BIT.W #%1000
+    BEQ .SkipExtraRow
+    .DoExtraRow:
+        ;LDA.W #$0017
+        ;LDX.W #DATA16_PZTrackerLine3Extra
+        ;LDY.W #$230E
+        ;MVN $7E,bank(DATA16_PZTrackerLine3Extra)
+        ;BRA .EndExtraRow
+    .SkipExtraRow:
+        LDA.W #$0017
+        LDX.W #DATA16_PZTrackerLine3NonExtra
+        LDY.W #$230E
+        MVN $7E,bank(DATA16_PZTrackerLine3NonExtra)
+    .EndExtraRow:
 
     ; Count total checks completed
     LDA.W #LOC_PuzzleChecksStart

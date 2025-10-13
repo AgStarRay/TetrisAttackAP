@@ -257,7 +257,7 @@ SUB_DisplaySCTracker:
     LDX.W #DATA16_SCTrackerLine2
     LDY.W #$22CE
     ;MVN $7E,bank(DATA16_SCTrackerLine2)
-    LDA.W #$0015
+    LDA.W #$0017
     LDX.W #DATA16_SCTrackerLine3
     LDY.W #$230E
     MVN $7E,bank(DATA16_SCTrackerLine3)
@@ -271,9 +271,18 @@ SUB_DisplaySCTracker:
     STA.B $04
     STZ.B $06
     JSL.L CODE_CountCompletedChecks
-    LDA.B $06
+    LDA.L SRAM_ClearedShockPanels
+    STA.B $1A
+    LDA.L DATA8_ShockPanelsPerCheck
+    AND.W #$00FF
+    STA.B $1C
+    JSL.L CODE_WordDivision
+    LDA.B $1A
+    CLC
+    ADC.B $06
     JSL.L CODE_16BitHexToDec
-    LDA.W #$040E
+    LDA.W $0374
+    ORA.W #$0450
     STA.L $7E2298
     LDA.W $0376
     ORA.W #$0450
@@ -283,7 +292,8 @@ SUB_DisplaySCTracker:
     STA.L $7E229C
     LDA.L DATA16_StageClearTotalChecks
     JSL.L CODE_16BitHexToDec
-    LDA.W #$040E
+    LDA.W $0374
+    ORA.W #$0450
     STA.L $7E22A0
     LDA.W $0376
     ORA.W #$0450
@@ -298,26 +308,44 @@ SUB_DisplaySCTracker:
     LDA.L SRAM_StageClearReceivedSpecialStages
     SEC
     SBC.L SRAM_StageClearSpecialStageCompletions
-    REP #$20
-    JSL.L CODE_16BitHexToDec ; Try finding an 8-bit version?
-    LDA.W $0376
-    ORA.W #$0850
-    STA.L $7E2318
-    LDA.W $0378
-    ORA.W #$0850
-    STA.L $7E231A
+    BEQ .CaughtUpOnSpecialStages
+    BMI .CaughtUpOnSpecialStages
+    .PendingSpecialStages:
+        REP #$20
+        JSL.L CODE_16BitHexToDec ; Try finding an 8-bit version?
+        LDA.W $0376
+        ORA.W #$0850
+        STA.L $7E231A
+        LDA.W $0378
+        ORA.W #$0850
+        STA.L $7E231C
+        BRA .DoneWithSpecialStage
+    .CaughtUpOnSpecialStages:
+        REP #$20
+        LDA.W #$1450 ; '0'
+        STA.L $7E231A
+        STA.L $7E231C
+    .DoneWithSpecialStage:
     LDY.W WRAM7E_OAMAppendAddr
     LDA.L SRAM_StageClearLastStageClear
-    AND.W #$00FF
-    BEQ .NotCleared
+    BIT.W #$0040
+    BEQ .LastStageNotCleared
         %append_sprite($90, $60, GFX_StageClearSprite)
         BRA .End
-    .NotCleared:
+    .LastStageNotCleared:
     LDA.L SRAM_StageClearLastStageUnlock
     AND.W #$00FF
     BEQ .NotUnlocked
-        %append_sprite($90, $60, GFX_APSprite)
-        BRA .End
+    .Unlocked:
+        LDA.L SRAM_StageClearLastStageClear
+        BIT.W #$0001
+        BNE .LastStageAlreadyCollected
+        .LastStageNotCollected:
+            %append_sprite($90, $60, GFX_APSprite)
+            BRA .End
+        .LastStageAlreadyCollected:
+            %append_sprite($90, $60, GFX_Interrobang)
+            BRA .End
     .NotUnlocked:
         %append_sprite($90, $60, GFX_LockSprite)
     .End:
@@ -326,7 +354,7 @@ SUB_DisplaySCTracker:
 DATA16_SCTrackerLine2:
     dw $0451,$040E,$0452,$040E,$0453,$040E,$0454,$040E,$0455,$040E,$0456
 DATA16_SCTrackerLine3:
-    dw $046C,$0469,$045C,$0465,$040E,$040E,$040E,$040E,$040E,$0465,$046C
+    dw $046D,$046B,$045A,$0469,$046C,$047D,$040E,$040E,$040E,$0465,$046C,$040E
 
 CODE_NewStageClearCustomSave:
     PHP
