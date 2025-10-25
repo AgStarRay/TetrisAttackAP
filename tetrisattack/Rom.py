@@ -148,8 +148,8 @@ def patch_rom(world: "TetrisAttackWorld", patch: TATKProcedurePatch) -> None:
     #     vs_goals |= 0b01100
     patch.write_bytes(GOALS_POSITION, [int(world.options.stage_clear_goal), puzzle_goals, vs_goals])
     patch.write_byte(DEATHLINKHINT, 1 if world.options.death_link else 0)
-    patch.write_bytes(STRING_DATA, WORLD_VERSION.encode('ascii')[:8])
-    patch.write_bytes(STRING_DATA + 0x8, world.player_name.encode('ascii')[:16])
+    patch.write_bytes(STRING_DATA, (WORLD_VERSION + '\0').encode('ascii')[:8])
+    patch.write_bytes(STRING_DATA + 0x8, (world.player_name + '\0').encode('ascii')[:16])
     patch.write_byte(MUSICFILTER, world.options.music_filter.value)
 
     # Stage Clear
