@@ -267,13 +267,13 @@ def patch_rom(world: "TetrisAttackWorld", patch: TATKProcedurePatch) -> None:
         # case VersusMode.option_progressive_per_stage:
         #     vs_mode |= 0b010
     patch.write_byte(VSMODE, vs_mode)
-    goal_diff = 2
+    goal_diff = 0
     if include_versus:
         match world.options.versus_goal:
-            case VersusGoal.option_easy:
-                goal_diff = 0
             case VersusGoal.option_normal:
                 goal_diff = 1
+            case VersusGoal.option_hard:
+                goal_diff = 2
             case VersusGoal.option_very_hard:
                 goal_diff = 3
         goal_stage = 12
