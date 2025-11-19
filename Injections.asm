@@ -160,7 +160,9 @@ RTL
 org $89ED6A
 NOP : NOP : NOP : NOP
 
-; Redirect the title screen button check code in states 3 and 4
+; Redirect the title screen button check code in states 1, 3, and 4
+org $8ABE9F
+JML CODE_TitleScreenCustomCode1 ; This subroutine is too small to include an RTS
 org $8ABC4E
 JSL CODE_TitleScreenCustomCode3
 RTS

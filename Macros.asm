@@ -25,12 +25,29 @@ macro append_text(pos_x, pos_y, src_ptr, base_sprite)
     STA.B $CF
     LDA.W #<pos_y>
     STA.B $D1
-    LDA.W #<src_ptr[1]>
+    LDA.W #bank(<src_ptr>)*256
     STA.B $D4
-    LDA.W #<src_ptr[0]>
+    LDA.W #<src_ptr>
     STA.B $D3
     LDA.W #<base_sprite>
     STA.B $D6
+    LDA.B [$D3]
+    INC.B $D3
+    JSL.L CODE_AppendText
+endmacro
+
+macro append_text_with_length(pos_x, pos_y, src_ptr, base_sprite, length)
+    LDA.W #<pos_x>
+    STA.B $CF
+    LDA.W #<pos_y>
+    STA.B $D1
+    LDA.W #bank(<src_ptr>)*256
+    STA.B $D4
+    LDA.W #<src_ptr>
+    STA.B $D3
+    LDA.W #<base_sprite>
+    STA.B $D6
+    LDA.W #<length>
     JSL.L CODE_AppendText
 endmacro
 

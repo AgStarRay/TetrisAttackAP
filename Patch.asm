@@ -605,6 +605,33 @@ SUB_AddShockPanelClears:
     JSL.L CODE_SRAMSave
     RTS
 
+CODE_TitleScreenCustomCode1:
+    print "New title screen state 1 code at ",pc
+    JSL.L CODEp06_DecompressAtoB
+    dl UNREACH_8C9F51
+    dl $7F0000
+    PHB
+    PHK
+    PLB
+    LDY.W #DATA_TitleScreenExistingASCIIVRAMDMA
+    JSL.L CODE_CreateVRAMDMA
+    LDY.W #DATA_TitleScreenMissingASCIIVRAMDMA
+    JSL.L CODE_CreateVRAMDMA
+    PLB
+    INC.W WRAM_GameSubstate
+    PLA
+    JML $8ABE10
+DATA_TitleScreenExistingASCIIVRAMDMA:
+    dl $7F1800
+    dw $0400
+    db $80
+    dw $1800
+DATA_TitleScreenMissingASCIIVRAMDMA:
+    dl GFX_MissingASCII
+    dw $0400
+    db $80
+    dw $1A00
+
 CODE_TitleScreenCustomCode3:
     print "New title screen state 3 code at ",pc
     TDC
@@ -642,7 +669,7 @@ SUB_TitleScreenAPWiggle:
     ; TODO: Wiggle the * AP sprite up and down, 30 free sprite slots and 2 free sprite palettes
     RTS
 SUB_TitleScreenDisplayVersion:
-    ; TODO: Wiggle the * AP sprite up and down, 30 free sprite slots and 2 free sprite palettes
+    %append_text_with_length(192, 100, TEXT_WorldVersion, $3D80, 8)
     RTS
 
 CODE_MenuDataModification:
