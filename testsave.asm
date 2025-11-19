@@ -30,8 +30,12 @@ org DATA16_VersusTotalChecks
 dw 20
 org DATA8_VersusStageChecks
 db $03,$03,$03,$03,$03,$03,$03,$03,$01,$01,$01,$01
-org DATA8_VersusCharacterChecks
-db $00,$00,$00,$00,$00,$00,$00,$00
+org DATA8_VersusNoContinueChecks
+db $00,$00,$00,$00
+org DATA8_VersusAllFriendsNormalChecks
+db $01
+;org DATA8_VersusCharacterChecks
+;db $00,$00,$00,$00,$00,$00,$00,$00
 org DATA16_PuzzleTotalChecks
 dw 132
 org DATA8_PuzzleLevel1Checks
