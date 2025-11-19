@@ -21,8 +21,8 @@ CODE_ArchipelagoStageClearMenu:
         JSR.W SUB_TriggerSpecialStage
         JML.L CODE_JP_83E754
     .SkipSpecialStage:
-    STZ.W WRAM7E_StageClearStageIndex
-    LDY.W WRAM7E_OAMAppendAddr
+    STZ.W WRAM_StageClearStageIndex
+    LDY.W WRAM_OAMAppendAddr
     ;DEY
     ;DEY
     ;DEY
@@ -35,7 +35,7 @@ CODE_ArchipelagoStageClearMenu:
         AND.W #$00FF
         BNE .SkipLockSprite
             JSR.W SUB_MenuSCCalculateSpritePos
-            STA.W WRAM7E_OAMBuffer,Y
+            STA.W WRAM_OAMBuffer,Y
             INY
             INY
             LDA.L WRAM_LockSpriteValues,X
@@ -46,7 +46,7 @@ CODE_ArchipelagoStageClearMenu:
             .UseNormalLockSprite:
                 LDA.W #GFX_LockSprite
             .StoreLockSprite:
-            STA.W WRAM7E_OAMBuffer,Y
+            STA.W WRAM_OAMBuffer,Y
             INY
             INY
             BRA .NextSlot
@@ -71,7 +71,7 @@ CODE_ArchipelagoStageClearMenu:
         INX
         BRA .MenuSCCustomGraphicsLoop
     .MenuSCCustomGraphics_End:
-    STY.W WRAM7E_OAMAppendAddr
+    STY.W WRAM_OAMAppendAddr
 
     LDA.L $7E95EC
     BEQ .Jump1
@@ -83,11 +83,11 @@ CODE_ArchipelagoStageClearMenu:
     LDA.L WRAM_MenuCursorY
     CMP.W #$0003
     BNE .Jump2
-        INC.W WRAM83_MenuProcedure
+        INC.W WRAM_MenuProcedure
     .Jump2:
-    LDA.B WRAM00_Pad1State
+    LDA.B WRAM_Pad1State
     BEQ .UnhighlightLocks
-    LDA.B WRAM00_Pad1Press
+    LDA.B WRAM_Pad1Press
     BEQ .SkipUnhighlightLocks
     .UnhighlightLocks:
         TDC
@@ -110,43 +110,43 @@ CODE_ArchipelagoStageClearMenu:
         STA.L WRAM_LockSpriteValues+32
         STA.L WRAM_LockSpriteValues+34
     .SkipUnhighlightLocks:
-    LDA.B WRAM00_Pad1Press
+    LDA.B WRAM_Pad1Press
     BIT.W #$1080
     BEQ .Jump3
-        LDA.W WRAM7E_StageClearSpecialIndex
+        LDA.W WRAM_StageClearSpecialIndex
         BNE .CanPlay
         JSR.W SUB_CheckIfRoundIsOpen
         BCS .CanPlay
             LDA.W #$0004
-            STA.W WRAM83_NewSoundEvent
+            STA.W WRAM_NewSoundEvent
             JSR.W SUB_HighlightRoundLockSprites
             JML.L CODE_JP_83E754
         .CanPlay:
         LDA.W #$0005
-        STA.W WRAM83_NewSoundEvent
+        STA.W WRAM_NewSoundEvent
         TDC
         STA.L $7E9969
         STA.L $7E997D
         JSL.L CODE_MenuSCPickFirstStage
         ;TODO: Fix menu graphics
-        ;LDA.W WRAM7E_StageClearRoundIndex
+        ;LDA.W WRAM_StageClearRoundIndex
         ;DEC A
-        ;STA.W WRAM7E_StageClearRoundClears
+        ;STA.W WRAM_StageClearRoundClears
         LDA.W #$0005
-        STA.W WRAM83_GameSubstate
-        STZ.W WRAM83_MenuProcedure
+        STA.W WRAM_GameSubstate
+        STZ.W WRAM_MenuProcedure
         JML.L CODE_JP_83E754
     .Jump3:
     BIT.W #$8000
     BEQ .Jump4
         LDA.W #$0004
-        STA.W WRAM83_NewSoundEvent
+        STA.W WRAM_NewSoundEvent
         TDC
         STA.L $7E9969
         STA.L $7E997D
         LDA.W #$0009
-        STA.W WRAM83_GameSubstate
-        STZ.W WRAM83_MenuProcedure
+        STA.W WRAM_GameSubstate
+        STZ.W WRAM_MenuProcedure
     .Jump4:
     JML.L CODE_JP_83E754
 SUB_MenuSCCalculateSpritePos:
@@ -162,7 +162,7 @@ SUB_CheckIfRoundIsOpen:
     PHB
     PHK
     PLB
-    LDA.W WRAM7E_StageClearRoundIndex
+    LDA.W WRAM_StageClearRoundIndex
     DEC A
     ASL A
     TAX
@@ -207,11 +207,11 @@ SUB_CheckIfRoundIsOpen:
         PLB
         RTS
 SUB_HighlightRoundLockSprites:
-    LDA.W WRAM7E_StageClearRoundIndex ; (roundIndex-1)*6
+    LDA.W WRAM_StageClearRoundIndex ; (roundIndex-1)*6
     DEC A
     ASL A
     CLC
-    ADC.W WRAM7E_StageClearRoundIndex
+    ADC.W WRAM_StageClearRoundIndex
     DEC A
     ASL A
     TAX
@@ -240,12 +240,12 @@ DATA16_MenuSCSpritePositions:
     dw $B0E7,$C0BF,$C0C7,$C0CF,$C0D7,$C0DF
 SUB_TriggerSpecialStage:
     LDA.W #$0006
-    STA.W WRAM7E_GameSubstate
+    STA.W WRAM_GameSubstate
     LDA.W #$0001
-    STA.W WRAM7E_StageClearSpecialIndex
+    STA.W WRAM_StageClearSpecialIndex
     LDA.L SRAM_StageClearSpecialStageCompletions
     INC A
-    STA.W WRAM7E_StageClearStageIndex
+    STA.W WRAM_StageClearStageIndex
     RTS
 
 SUB_DisplaySCTracker:
@@ -326,7 +326,7 @@ SUB_DisplaySCTracker:
         STA.L $7E231A
         STA.L $7E231C
     .DoneWithSpecialStage:
-    LDY.W WRAM7E_OAMAppendAddr
+    LDY.W WRAM_OAMAppendAddr
     LDA.L SRAM_StageClearLastStageClear
     BIT.W #$0040
     BEQ .LastStageNotCleared
@@ -349,7 +349,7 @@ SUB_DisplaySCTracker:
     .NotUnlocked:
         %append_sprite($90, $60, GFX_LockSprite)
     .End:
-    STY.W WRAM7E_OAMAppendAddr
+    STY.W WRAM_OAMAppendAddr
     RTS
 DATA16_SCTrackerLine2:
     dw $0451,$040E,$0452,$040E,$0453,$040E,$0454,$040E,$0455,$040E,$0456
@@ -365,21 +365,21 @@ CODE_NewStageClearCustomSave:
     LDA.W #$0001
     STA.W $0344
     LDA.W #$0001
-    STA.W WRAM7E_StageClearStageIndex
+    STA.W WRAM_StageClearStageIndex
     STZ.W $0340
     JSR.W SUB_SetLocalRoundClears
     STZ.W $0346
     LDA.L SRAM_StageClearScore_Lo
-    STA.W WRAM7E_Score_Lo
-    STA.W WRAM7E_CheckpointScore_Lo
+    STA.W WRAM_Score_Lo
+    STA.W WRAM_CheckpointScore_Lo
     LDA.L SRAM_StageClearScore_Hi
-    STA.W WRAM7E_Score_Hi
-    STA.W WRAM7E_CheckpointScore_Hi
+    STA.W WRAM_Score_Hi
+    STA.W WRAM_CheckpointScore_Hi
     LDA.W #$0001
     STA.L $7E9446
-    STZ.W WRAM7E_IngameHours
-    STZ.W WRAM7E_IngameMinutes
-    STZ.W WRAM7E_IngameSeconds
+    STZ.W WRAM_IngameHours
+    STZ.W WRAM_IngameMinutes
+    STZ.W WRAM_IngameSeconds
     PLP
     RTL
 
@@ -392,7 +392,7 @@ SUB_SetLocalRoundClears:
     .NoLastStage:
         LDA.W #$0005 ; Allow access to all 6 rounds then restrict the player's entry
     .RoundClears:
-    STA.W WRAM7E_StageClearRoundClears
+    STA.W WRAM_StageClearRoundClears
     RTS
 
 CODE_MenuSCState2CustomCode11:
@@ -403,11 +403,11 @@ CODE_MenuSCState2CustomCode11:
     JSL.L CODE_83E666_JSR
     LDA.W #$0001
     STA.L $7E9616
-    STZ.W WRAM83_MenuProcedure
+    STZ.W WRAM_MenuProcedure
     LDA.W #$0001
     STA.L $7E9610
     LDA.W #$0008
-    STA.W WRAM83_GameSubstate
+    STA.W WRAM_GameSubstate
     TDC
     STA.L WRAM_MenuCursorX
     STA.L $7E96EB

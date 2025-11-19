@@ -35,10 +35,10 @@ CODE_OnPuzzleWin:
     JSL.L CODE_SRAMValidation
     TDC
     STA.L WRAM_PuzzleFanfareIsRoundClear
-    LDA.W WRAM7E_CharacterIndex1
+    LDA.W WRAM_CharacterIndex1
     ASL A
     TAX
-    LDA.W WRAM7E_PuzzleSecretFlag
+    LDA.W WRAM_PuzzleSecretFlag
     BEQ .NonSecret
         LDA.L DATA16_A2_PuzzleSecretLevelClearOffsets,X
         BRA .UseIndex
@@ -47,7 +47,7 @@ CODE_OnPuzzleWin:
     .UseIndex:
     PHA
     SEC
-    ADC.W WRAM7E_PuzzleStageIndex
+    ADC.W WRAM_PuzzleStageIndex
     TAX
     SEP #$20
     LDA.B #$7F
@@ -94,7 +94,7 @@ CODE_OnPuzzleWin:
         LDA.B #$01
         BRA .EndRoundClearFlagging
     .RoundAlreadyCleared:
-        LDA.W WRAM7E_PuzzleStageIndex
+        LDA.W WRAM_PuzzleStageIndex
         CMP.B #$09
         BNE .NotCleared
             LDA.B #$01
@@ -110,7 +110,7 @@ CODE_OnPuzzleWin:
     PLA
     BEQ .NoFadeOut
         LDA.B #$E1
-        STA.W WRAM87_NewMusicEvent
+        STA.W WRAM_NewMusicEvent
     .NoFadeOut:
     REP #$30
     JSL.L CODE_SRAMSave
@@ -129,25 +129,25 @@ CODE_PuzzleCustomRoundClearCheck:
 CODE_PuzzleFanfare:
     print "Puzzle fanfare at ",pc
     LDA.L WRAM_PuzzleFanfareIsRoundClear
-    STA.W WRAM7E_RoundClearIndicator
+    STA.W WRAM_RoundClearIndicator
     BEQ .End
         LDA.W #$00FA ; Bravo II sound
-        STA.W WRAM7E_NewSoundEvent
+        STA.W WRAM_NewSoundEvent
     .End:
     LDA.W #$000A
-    STA.W WRAM7E_GameSubstate
+    STA.W WRAM_GameSubstate
     RTL
 
 CODE_PuzzleCustomCreditsCheck:
     LDA.L WRAM_PuzzleFanfareIsRoundClear
     BEQ .End
-    LDA.W WRAM7E_CharacterIndex1
+    LDA.W WRAM_CharacterIndex1
     CMP.W #$0005
     BNE .End
     LDA.L DATA8_GoalPuzzle
     BIT.W #%100
     BNE .RollCredits
-    LDA.W WRAM7E_PuzzleSecretFlag
+    LDA.W WRAM_PuzzleSecretFlag
     BNE .SecretCreditsCheck
         LDA.L DATA8_GoalPuzzle
         BIT.W #%001
@@ -162,9 +162,9 @@ CODE_PuzzleCustomCreditsCheck:
         STA.L $7E6395
         JSL.L CODE_FL_86D7D8
         LDA.W #$0015
-        STA.W WRAM7E_GameSubstate
-        STZ.B WRAM7E_GameFrames
-        STZ.B WRAM7E_GameSeconds
+        STA.W WRAM_GameSubstate
+        STZ.B WRAM_GameFrames
+        STZ.B WRAM_GameSeconds
     .End:
     RTL
 
@@ -176,13 +176,13 @@ CODE_OnPuzzleFail:
     STA.L SNI_DeathlinkTrigger
     LDA.W #$0001
     STA.L $7E943C
-    INC.W WRAM7E_GameSubstate
+    INC.W WRAM_GameSubstate
     RTL
 
 CODE_PuzzleResultSummonNextStage:
-    LDA.W WRAM7E_RoundClearIndicator
+    LDA.W WRAM_RoundClearIndicator
     BNE .EndRound
-    INC.W WRAM7E_PuzzleStageIndex
+    INC.W WRAM_PuzzleStageIndex
     JSR.W SUB_SkipIfClearedOrLockedPuzzle
     JSR.W SUB_SkipIfClearedOrLockedPuzzle
     JSR.W SUB_SkipIfClearedOrLockedPuzzle
@@ -192,7 +192,7 @@ CODE_PuzzleResultSummonNextStage:
     JSR.W SUB_SkipIfClearedOrLockedPuzzle
     JSR.W SUB_SkipIfClearedOrLockedPuzzle
     JSR.W SUB_SkipIfClearedOrLockedPuzzle
-    LDA.W WRAM7E_PuzzleStageIndex
+    LDA.W WRAM_PuzzleStageIndex
     CMP.W #$000A
     BCC .AdvanceToNextStage
     .EndRound:
@@ -202,16 +202,16 @@ CODE_PuzzleResultSummonNextStage:
         TDC
     .SetEndModeIndicator:
     STA.L WRAM_EndModeIndicator
-    INC.W WRAM7E_GameSubstate
+    INC.W WRAM_GameSubstate
     RTL
 
 
 SUB_SkipIfClearedOrLockedPuzzle:
     print "Cleared puzzle check code at ",pc
-    LDA.W WRAM7E_CharacterIndex1
+    LDA.W WRAM_CharacterIndex1
     ASL A
     TAX
-    LDA.W WRAM7E_PuzzleSecretFlag
+    LDA.W WRAM_PuzzleSecretFlag
     BEQ .NonSecret
         LDA.L DATA16_A2_PuzzleSecretLevelClearOffsets,X
         BRA .UseIndex
@@ -224,22 +224,22 @@ SUB_SkipIfClearedOrLockedPuzzle:
     BNE .RoundAlreadyCleared
         TXA
         SEC
-        ADC.W WRAM7E_PuzzleStageIndex
+        ADC.W WRAM_PuzzleStageIndex
         TAX
         LDA.L $700000,X
         BIT.W #$0040
         BEQ .StageIsNotCleared
-        INC.W WRAM7E_PuzzleStageIndex
+        INC.W WRAM_PuzzleStageIndex
         RTS
     .RoundAlreadyCleared:
         RTS
     .StageIsNotCleared:
 CODE_SkipIfLockedPuzzle:
     print "Skip puzzle code at ",pc
-    LDA.W WRAM7E_CharacterIndex1
+    LDA.W WRAM_CharacterIndex1
     ASL A
     TAX
-    LDA.W WRAM7E_PuzzleSecretFlag
+    LDA.W WRAM_PuzzleSecretFlag
     BEQ .NonSecret
         LDA.L DATA16_A2_PuzzleSecretUnlockOffsets,X
         BRA .UseIndex
@@ -247,28 +247,28 @@ CODE_SkipIfLockedPuzzle:
         LDA.L DATA16_A2_PuzzleUnlockOffsets,X
     .UseIndex:
     SEC
-    ADC.W WRAM7E_PuzzleStageIndex
+    ADC.W WRAM_PuzzleStageIndex
     TAX
     LDA.L $700000,X
     AND.W #$00FF
     BNE .StageIsUnlocked
-        INC.W WRAM7E_PuzzleStageIndex
+        INC.W WRAM_PuzzleStageIndex
     .StageIsUnlocked:
     RTS
 
 CODE_SetNewPuzzleIndex:
     print "Set new puzzle index code at ",pc
-    LDA.W WRAM7E_CharacterIndex1
+    LDA.W WRAM_CharacterIndex1
     ASL A
     ASL A
     CLC
-    ADC.W WRAM7E_CharacterIndex1
+    ADC.W WRAM_CharacterIndex1
     ASL A
     SEC
-    ADC.W WRAM7E_PuzzleStageIndex
-    STA.W WRAM7E_PuzzleIndex ; levelIndex*10 + stageIndex + 1
+    ADC.W WRAM_PuzzleStageIndex
+    STA.W WRAM_PuzzleIndex ; levelIndex*10 + stageIndex + 1
     ; TODO_AFTER: Use a table in bank A0 to remap puzzleIndex to something else
-    LDX.W WRAM7E_PuzzleSecretFlag
+    LDX.W WRAM_PuzzleSecretFlag
     CPX.W #$0000
     BEQ .AddSecretSauce
         CLC

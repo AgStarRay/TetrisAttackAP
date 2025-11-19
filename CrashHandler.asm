@@ -16,7 +16,7 @@ CODE_NewCrashHandler:
     STX.W SNES80_Interrupt_Enable
     LDX.B #$80
     STX.W SNES80_Screen_Display
-    STX.W WRAM80_CurrentBrightness
+    STX.W WRAM_CurrentBrightness
     ; If crashing during the crash, skip the graphics and part of the word "CRASHED!"
     LDA.L WRAM_DoubleCrashCheck
     CMP.W #$5243

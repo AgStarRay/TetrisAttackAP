@@ -62,7 +62,7 @@ CODE_CustomMessage:
     SEC
     SBC.W #$000A
     STA.B $D1
-    LDA.W WRAM7E_GameState
+    LDA.W WRAM_GameState
     CMP.W #$0005
     BEQ .GameResultMessage
     .StatusMessage:
@@ -102,7 +102,7 @@ CODE_AppendText:
     ASL A
     ASL A
     CLC
-    ADC.W WRAM7E_OAMAppendAddr
+    ADC.W WRAM_OAMAppendAddr
     CMP.W #$0200
     BCC .ProceedB
         RTL
@@ -112,7 +112,7 @@ CODE_AppendText:
     PLB
     LDA.B $CF
     STA.B $D8
-    LDY.W WRAM7E_OAMAppendAddr
+    LDY.W WRAM_OAMAppendAddr
     ;$D8 is the current X position
     ;$E4 is the number of characters left
     ;Y is address offset for OAM
@@ -127,17 +127,17 @@ CODE_AppendText:
     .NormalCharacter:
         PHA
         LDA.B $D8
-        STA.W WRAM7E_OAMBuffer,Y
+        STA.W WRAM_OAMBuffer,Y
         CLC
         ADC.W #$0008
         STA.B $D8
         INY
         LDA.B $D1
-        STA.W WRAM7E_OAMBuffer,Y
+        STA.W WRAM_OAMBuffer,Y
         INY
         PLA
         ORA.B $D6
-        STA.W WRAM7E_OAMBuffer,Y
+        STA.W WRAM_OAMBuffer,Y
         INY
         INY
         BRA .DoneWithCharacter
@@ -189,7 +189,7 @@ CODE_AppendText:
     BEQ .End
     BRL .CharacterLoop
     .End:
-    STY.W WRAM7E_OAMAppendAddr
+    STY.W WRAM_OAMAppendAddr
     PLB
     RTL
 

@@ -4,11 +4,11 @@ CODE_VsSelection:
     LDA.L WRAM_1POptionIndex
     CMP.W #$0004
     BNE .SkipVsSelect
-        LDA.W WRAM7E_Pad1Repeat
+        LDA.W WRAM_Pad1Repeat
         BIT.W #$0200
         BEQ .NoLeftSignal
             LDA.W #$0001
-            STA.W WRAM7E_NewSoundEvent
+            STA.W WRAM_NewSoundEvent
             LDA.L WRAM_VsStageNumber
             DEC A
             BPL .StageNumberNotNegative
@@ -20,7 +20,7 @@ CODE_VsSelection:
         BIT.W #$0100
         BEQ .NoRightSignal
             LDA.W #$0001
-            STA.W WRAM7E_NewSoundEvent
+            STA.W WRAM_NewSoundEvent
             LDA.L WRAM_VsStageNumber
             INC A
             STA.L WRAM_VsStageNumber
@@ -54,16 +54,16 @@ SUB_KeepVsStageInRange:
     RTS
 
 SUB_VsDisplayStageSelector:
-    LDY.W WRAM7E_OAMAppendAddr
+    LDY.W WRAM_OAMAppendAddr
     %append_sprite($98, $5B, $30BF)
     %append_sprite($98, $63, $30BE)
     %append_sprite($30, $5B, $70BF)
     %append_sprite($30, $63, $70BE)
-    STY.W WRAM7E_OAMAppendAddr
+    STY.W WRAM_OAMAppendAddr
     RTS
 
 SUB_VsDisplayStageState:
-    LDY.W WRAM7E_OAMAppendAddr
+    LDY.W WRAM_OAMAppendAddr
     LDA.L WRAM_VsStageNumber
     TAX
     CPX.W #$0008
@@ -145,7 +145,7 @@ SUB_VsDisplayStageState:
             CMP.W #$0004
         BNE .DifficultyLoop
     .End:
-    STY.W WRAM7E_OAMAppendAddr
+    STY.W WRAM_OAMAppendAddr
     RTS
 SUB_VsDisplayDifficultyState:
     ; $00 is the number of difficulty levels for the selected stage
@@ -154,7 +154,7 @@ SUB_VsDisplayDifficultyState:
     ; $06 is the bitmask for the cleared difficulties
     ; $08 is the minimum difficulty level for the selected stage
     LDA.B $02
-    STA.W WRAM7E_OAMBuffer,Y
+    STA.W WRAM_OAMBuffer,Y
     CLC
     ADC.W #$0008
     STA.B $02
@@ -168,7 +168,7 @@ SUB_VsDisplayDifficultyState:
     BCC .Unlocked ; Current difficulty is less than unlocked difficulty count
     .Locked:
         LDA.W #GFX_LockSprite
-        STA.W WRAM7E_OAMBuffer,Y
+        STA.W WRAM_OAMBuffer,Y
         INY
         INY
         RTS
@@ -178,7 +178,7 @@ SUB_VsDisplayDifficultyState:
     BEQ .NotCleared
     .Cleared:
         LDA.W #GFX_StageClearSprite
-        STA.W WRAM7E_OAMBuffer,Y
+        STA.W WRAM_OAMBuffer,Y
         INY
         INY
         RTS
@@ -196,7 +196,7 @@ SUB_VsDisplayDifficultyState:
     BEQ .NoItem
     .HasItem:
         LDA.W #GFX_APSprite
-        STA.W WRAM7E_OAMBuffer,Y
+        STA.W WRAM_OAMBuffer,Y
         INY
         INY
         RTS
@@ -216,13 +216,13 @@ SUB_VsDisplayDifficultyState:
     BNE .Pointless
     .Goal: ; If this is the goal stage at the goal difficulty
         LDA.W #GFX_Interrobang
-        STA.W WRAM7E_OAMBuffer,Y
+        STA.W WRAM_OAMBuffer,Y
         INY
         INY
         RTS
     .Pointless:
         LDA.W #$B0DD ; "_"
-        STA.W WRAM7E_OAMBuffer,Y
+        STA.W WRAM_OAMBuffer,Y
         INY
         INY
         RTS
@@ -237,49 +237,49 @@ CODE_ArchipelagoVsMenu:
     BEQ .SelectableDifficulty
         ; Go straight to Vs
         %load_goal_difficulty()
-        STA.W WRAM7E_VsDifficulty
+        STA.W WRAM_VsDifficulty
         LDA.W #$0039
-        STA.W WRAM7E_GameSubstate
-        STZ.W WRAM7E_MenuProcedure
+        STA.W WRAM_GameSubstate
+        STZ.W WRAM_MenuProcedure
         RTL
     .SelectableDifficulty:
     PHB
     PHK
     PLB
     JSR.W SUB_VsDisplayStageState
-    LDA.W WRAM7E_Pad1Repeat
+    LDA.W WRAM_Pad1Repeat
     BIT.W #$0200
     BEQ .NoLeftSignal
         LDA.W #$0001
-        STA.W WRAM7E_NewSoundEvent
-        LDA.W WRAM7E_VsDifficulty
+        STA.W WRAM_NewSoundEvent
+        LDA.W WRAM_VsDifficulty
         DEC A
         BPL .DifficultyNotNegative
             LDA.W #$0003
         .DifficultyNotNegative:
-        STA.W WRAM7E_VsDifficulty
+        STA.W WRAM_VsDifficulty
         BRA .HandleAOrB
     .NoLeftSignal:
     BIT.W #$0100
     BEQ .NoRightSignal
         LDA.W #$0001
-        STA.W WRAM7E_NewSoundEvent
-        LDA.W WRAM7E_VsDifficulty
+        STA.W WRAM_NewSoundEvent
+        LDA.W WRAM_VsDifficulty
         INC A
         AND.W #$0003
-        STA.W WRAM7E_VsDifficulty
+        STA.W WRAM_VsDifficulty
     .NoRightSignal:
     .HandleAOrB:
-    LDA.W WRAM7E_Pad1Press
+    LDA.W WRAM_Pad1Press
     BIT.W #$8000
     BEQ .DidNotPressB
         LDX.W #DATA16_VsText
         JSR.W SUB_PrintVsOptionText
         LDA.W #$0004
-        STA.W WRAM7E_NewSoundEvent
+        STA.W WRAM_NewSoundEvent
         LDA.W #$0009
-        STA.W WRAM7E_GameSubstate
-        STZ.W WRAM7E_MenuProcedure
+        STA.W WRAM_GameSubstate
+        STZ.W WRAM_MenuProcedure
         BRA .UpdateBG1
     .DidNotPressB:
     BIT.W #$0080
@@ -288,39 +288,39 @@ CODE_ArchipelagoVsMenu:
         JSL.L CODE_VsStageIsAvailable
         BPL .GoToVs
             LDA.W #$0004
-            STA.W WRAM7E_NewSoundEvent
+            STA.W WRAM_NewSoundEvent
             BRA .DidNotPressA
         .GoToVs:
             LDA.W #$0005
-            STA.W WRAM7E_NewSoundEvent
+            STA.W WRAM_NewSoundEvent
             LDA.W #$0039
-            STA.W WRAM7E_GameSubstate
-            STZ.W WRAM7E_MenuProcedure
-            LDA.W WRAM7E_VsDifficulty
+            STA.W WRAM_GameSubstate
+            STZ.W WRAM_MenuProcedure
+            LDA.W WRAM_VsDifficulty
             STA.L $7E66CA
             BRA .UpdateBG1
     .DidNotPressA:
-        LDA.W WRAM7E_VsDifficulty
+        LDA.W WRAM_VsDifficulty
         ASL A
         TAX
         LDA.W PTR16_DifficultyText,X
         TAX
         JSR.W SUB_PrintVsOptionText
-        LDY.W WRAM7E_OAMAppendAddr
-        LDA.W WRAM7E_VsDifficulty
+        LDY.W WRAM_OAMAppendAddr
+        LDA.W WRAM_VsDifficulty
         ASL A
         ASL A
         ASL A
         CLC
         ADC.W #$9F77
-        STA.W WRAM7E_OAMBuffer,Y
+        STA.W WRAM_OAMBuffer,Y
         INY
         INY
         LDA.W #$300D
-        STA.W WRAM7E_OAMBuffer,Y
+        STA.W WRAM_OAMBuffer,Y
         INY
         INY
-        STY.W WRAM7E_OAMAppendAddr
+        STY.W WRAM_OAMAppendAddr
     .UpdateBG1:
     JSR.W SUB_DisplayVSTracker
     JSR.W SUB_RenderCustomMenuBG1
@@ -399,7 +399,7 @@ SUB_DisplayVSTracker:
     LDA.L WRAM_VsStageNumber
     ASL A
     TAY
-    LDA.W WRAM7E_GameSeconds
+    LDA.W WRAM_GameSeconds
     BIT.W #$0001
     BEQ .Even
         LDX.W PTR16_StageNameText,Y

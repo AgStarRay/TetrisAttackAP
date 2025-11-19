@@ -58,9 +58,9 @@ JSL.L CODE_SCStartSpecialStage
 
 ; Don't toss saved score after starting Stage Clear
 org $87A9BC
-STZ.W WRAM7E_IngameHours
-STZ.W WRAM7E_IngameMinutes
-STZ.W WRAM7E_IngameSeconds
+STZ.W WRAM_IngameHours
+STZ.W WRAM_IngameMinutes
+STZ.W WRAM_IngameSeconds
 RTS
 
 ; Disable Stage Clear tampering with the stage selection before gameplay

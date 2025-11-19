@@ -80,7 +80,7 @@ RTS
 
 ; Replace main menu substate 5 to go to substate 0
 org $83C15E
-STZ.W WRAM7E_GameSubstate
+STZ.W WRAM_GameSubstate
 JMP.W CODE_MainMenuState0
 
 ; Replace main menu substate 8 procedure 4 with custom code

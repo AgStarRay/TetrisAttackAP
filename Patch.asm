@@ -543,7 +543,7 @@ CODE_StateMachineLogic:
     REP #$30
     LDA.L WRAM_CurrentlyPlaying
     BEQ .GoToStateMachine
-    LDA.W WRAM7E_GameState
+    LDA.W WRAM_GameState
     CMP.W #$0004
     BNE .SkipGameplayLogic
         LDA.L SNI_MessageRequest
@@ -551,30 +551,30 @@ CODE_StateMachineLogic:
             TDC
             STA.L SNI_MessageRequest
         .SkipMessageClear:
-        LDA.L WRAM7E_PlayersIndicator
+        LDA.L WRAM_PlayersIndicator
         BNE .EndShockPanelCheck
-            LDA.W WRAM7E_ShockPanelCombo
+            LDA.W WRAM_ShockPanelCombo
             BEQ .EndShockPanelCheck
                 JSR.W SUB_AddShockPanelClears
         .EndShockPanelCheck:
         JSL.L CODE_ScanIncomingArchipelagoItems
         LDA.L SNI_DeathlinkPendingEvent
         BEQ .GoToStateMachine
-        LDA.W WRAM7E_CurrentlyPaused
+        LDA.W WRAM_CurrentlyPaused
         BNE .GoToStateMachine
-        LDA.W WRAM7E_ShouldPause
+        LDA.W WRAM_ShouldPause
         BNE .GoToStateMachine
             LDA.W #$0005
-            STA.W WRAM7E_GameState
+            STA.W WRAM_GameState
             LDA.W #$0001
-            STA.W WRAM7E_ToppedOut
+            STA.W WRAM_ToppedOut
             DEC A
-            STA.W WRAM7E_GameSubstate
-            STA.W WRAM7E_AdvanceIngameTimer
+            STA.W WRAM_GameSubstate
+            STA.W WRAM_AdvanceIngameTimer
             STA.L SNI_DeathlinkPendingEvent
         BRA .GoToStateMachine
     .SkipGameplayLogic:
-    LDA.W WRAM7E_GameState
+    LDA.W WRAM_GameState
     CMP.W #$0005
     BNE .GoToStateMachine
         JSL.L CODE_ScanIncomingArchipelagoItems
@@ -599,9 +599,9 @@ SUB_AddShockPanelClears:
     STA.L SRAM_ClearedShockPanels
     LDA.L WRAM_ShockPanelsInBoard
     SEC
-    SBC.W WRAM7E_ShockPanelCombo
+    SBC.W WRAM_ShockPanelCombo
     STA.L WRAM_ShockPanelsInBoard
-    STZ.W WRAM7E_ShockPanelCombo
+    STZ.W WRAM_ShockPanelCombo
     JSL.L CODE_SRAMSave
     RTS
 
@@ -612,8 +612,9 @@ CODE_TitleScreenCustomCode3:
     LDA.L $7E661A
     BEQ .End
     JSR.W SUB_TitleScreenAPWiggle
-    LDA.B WRAM00_Pad1Press
-    ORA.B WRAM00_Pad2Press
+    JSR.W SUB_TitleScreenDisplayVersion
+    LDA.B WRAM_Pad1Press
+    ORA.B WRAM_Pad2Press
     BEQ .End
         ; Set next title screen action to immediately be Yoshi giving the peace sign
         TDC
@@ -621,7 +622,7 @@ CODE_TitleScreenCustomCode3:
         LDA.W #$C905
         STA.L $7E6614
         %play_accept_sound()
-        INC.W WRAM7E_GameSubstate
+        INC.W WRAM_GameSubstate
         LDA.W #$0002 ; Set to Stage Clear option because main menu cannot reset it anymore
         STA.L WRAM_1POptionIndex
     .End:
@@ -630,6 +631,7 @@ CODE_TitleScreenCustomCode3:
 CODE_TitleScreenCustomCode4:
     print "New title screen state 4 code at ",pc
     JSR.W SUB_TitleScreenAPWiggle
+    JSR.W SUB_TitleScreenDisplayVersion
     LDA.L $7E662C
     BEQ .End
     INC.W $02A2
@@ -639,14 +641,17 @@ CODE_TitleScreenCustomCode4:
 SUB_TitleScreenAPWiggle:
     ; TODO: Wiggle the * AP sprite up and down, 30 free sprite slots and 2 free sprite palettes
     RTS
+SUB_TitleScreenDisplayVersion:
+    ; TODO: Wiggle the * AP sprite up and down, 30 free sprite slots and 2 free sprite palettes
+    RTS
 
 CODE_MenuDataModification:
-    STZ.W WRAM7E_BG1_HScroll
-    STZ.W WRAM7E_BG1_VScroll
-    STZ.W WRAM7E_BG2_HScroll
-    STZ.W WRAM7E_BG2_VScroll
-    STZ.W WRAM7E_BG3_HScroll
-    STZ.W WRAM7E_BG3_VScroll
+    STZ.W WRAM_BG1_HScroll
+    STZ.W WRAM_BG1_VScroll
+    STZ.W WRAM_BG2_HScroll
+    STZ.W WRAM_BG2_VScroll
+    STZ.W WRAM_BG3_HScroll
+    STZ.W WRAM_BG3_VScroll
     LDA.W #$040E ; ' '
     STA.L $7EA87C
     STA.L $7EA87E
@@ -707,17 +712,17 @@ CODE_NewMainMenuState2:
     REP #$30
     LDA.W #$0001
     STA.L WRAM_CurrentlyPlaying
-    STZ.W WRAM7E_PlayersIndicator
+    STZ.W WRAM_PlayersIndicator
     LDA.W #$0008
-    STA.W WRAM7E_GameSubstate
+    STA.W WRAM_GameSubstate
     STZ.W $1A6E
     PLA
     PLP
     RTL
 
 CODE_NewMainMenuState8:
-    INC.W WRAM7E_GameSubstate
-    STZ.W WRAM7E_MenuProcedure
+    INC.W WRAM_GameSubstate
+    STZ.W WRAM_MenuProcedure
     STZ.W $1A70
     LDA.W #$FFFF
     STA.L SNI_ReceiveCheck
@@ -734,16 +739,16 @@ CODE_NewMainMenuState9:
     print "New main menu state 9 routine at ",pc
     ; TODO_AFTER: Disallow access to modes that are not included
     ; Debug button press
-    LDA.L WRAM7E_Pad1Press
+    LDA.L WRAM_Pad1Press
     BIT.W #$4040
     BEQ .SkipSpecialCheck
         ; TODO: Display control for the Hint screen after one is obtained
         ; TODO: Take control of the Hint screen
         ; TODO: Make this instance of the Hint screen go back to the main menu
         ;LDA.W #$0017
-        ;STA.W WRAM7E_GameState
+        ;STA.W WRAM_GameState
         ;TDC
-        ;STA.W WRAM7E_GameSubstate
+        ;STA.W WRAM_GameSubstate
         ;TDC
         ;STA.W WRAM_VsMenuSubstate
     .SkipSpecialCheck:
@@ -758,7 +763,7 @@ CODE_NewMainMenuState9:
     STA.L $7E96DB
 
     ; Display goals and cleared modes
-    LDY.W WRAM7E_OAMAppendAddr
+    LDY.W WRAM_OAMAppendAddr
     LDA.L DATA8_GoalStageClear
     BEQ .NoStageClearGoal
         LDA.L SRAM_StageClearLastStageClear
@@ -823,7 +828,7 @@ CODE_NewMainMenuState9:
         .VSNotCleared:
             %append_sprite($30, $90, GFX_APSprite)
     .NoVersusGoal:
-  + STY.W WRAM7E_OAMAppendAddr
+  + STY.W WRAM_OAMAppendAddr
 
     ; Modified menu selection code
     LDA.L WRAM_MenuPadRepeat
@@ -865,7 +870,7 @@ CODE_NewMainMenuState9:
         BIT.W #%001
         BEQ .Proceed
         %load_goal_difficulty()
-        STA.W WRAM7E_VsDifficulty
+        STA.W WRAM_VsDifficulty
         JSL.L CODE_VsStageIsAvailable
         BPL .Proceed
             %play_cancel_sound()
@@ -877,7 +882,7 @@ CODE_NewMainMenuState9:
             TAY
             LDA.W DATA_1PlayerNewStates,Y
             AND.W #$00FF
-            STA.W WRAM7E_GameSubstate
+            STA.W WRAM_GameSubstate
             BRA .CursorDidNotMove
     .DidNotPressA:
     BIT.W #$8000
@@ -885,7 +890,7 @@ CODE_NewMainMenuState9:
         %play_cancel_sound()
         JSL.L CODE_8384DB_JSR
         LDA.W #$0004
-        STA.W WRAM7E_GameSubstate
+        STA.W WRAM_GameSubstate
     .DidNotPressB:
     .CursorDidNotMove:
         TDC
@@ -933,7 +938,7 @@ SUB_PrintSNIState:
     INC A
     CMP.L SNI_ReceiveCheck
     BEQ .Connecting
-    LDA.B WRAM7E_GameFrames
+    LDA.B WRAM_GameFrames
     CMP.W #30
     BMI .Odd
         LDA.W #$001B
@@ -991,8 +996,8 @@ DATA_CustomMenuBG1VRAMDMA:
 CODE_NewMainMenuState21:
     ;JSL.L CODE_AddCustomGraphics
     LDA.W #$0009
-    STA.W WRAM7E_GameSubstate
-    STZ.W WRAM7E_MenuProcedure
+    STA.W WRAM_GameSubstate
+    STZ.W WRAM_MenuProcedure
     STZ.W $1A70
     RTL
 
@@ -1100,11 +1105,11 @@ SUB_ArchipelagoGrantedLastStage:
     LDA.W #$0001
     STA.L SRAM_LastStageRevealFlag ; TODO: Use this flag to do a custom reveal
     LDA.W #$00F7
-    STA.L WRAM7E_NewSoundEvent
+    STA.L WRAM_NewSoundEvent
     BRA SUB_ArchipelagoWrite8BitValue
 ; Action Code 0002: play sound effect and set ID to arg
 SUB_ArchipelagoWriteReceivedItem:
-    LDA.W WRAM7E_GameState
+    LDA.W WRAM_GameState
     CMP.W #$0003
     BCC .MenuPopSound
         LDA.W #$0005
@@ -1112,7 +1117,7 @@ SUB_ArchipelagoWriteReceivedItem:
     .MenuPopSound:
         LDA.W #$0021
     .PlaySound:
-    STA.L WRAM7E_NewSoundEvent
+    STA.L WRAM_NewSoundEvent
 ; Action Code 0001: set ID to arg
 SUB_ArchipelagoWrite8BitValue:
     LDA.L SNI_ReceivedItemID
@@ -1136,14 +1141,14 @@ SUB_ArchipelagoORValue:
 ; Action Code 0005: ORwise set ID to arg in two places and play sound
 SUB_ArchipelagoMarkComplete:
     LDA.W #$00F6
-    STA.L WRAM7E_NewSoundEvent
+    STA.L WRAM_NewSoundEvent
     BRA SUB_ArchipelagoORValue
 ; Action Code 0006: play unique sound effect and set ID to arg
 SUB_ArchipelagoWriteReceivedCharacter:
     print "Receive character code at ",pc
     LDA.W #$004C
-    STA.L WRAM7E_NewSoundEvent
-    LDA.W WRAM7E_GameState
+    STA.L WRAM_NewSoundEvent
+    LDA.W WRAM_GameState
     CMP.W #$0007
     BNE .NotInVs
         LDA.L SNI_ReceivedItemID
@@ -1160,51 +1165,51 @@ SUB_ArchipelagoWriteReceivedCharacter:
     BRA SUB_ArchipelagoWrite8BitValue
 ; Action Code 0007: add chain or combo score
 SUB_ArchipelagoAddScore:
-    LDA.W WRAM7E_Score_Lo
-    STA.W WRAM7E_CheckpointScore_Lo
-    LDA.W WRAM7E_Score_Hi
-    STA.W WRAM7E_CheckpointScore_Hi
+    LDA.W WRAM_Score_Lo
+    STA.W WRAM_CheckpointScore_Lo
+    LDA.W WRAM_Score_Hi
+    STA.W WRAM_CheckpointScore_Hi
     LDA.L SRAM_StageClearScore_Lo
-    STA.W WRAM7E_Score_Lo
+    STA.W WRAM_Score_Lo
     LDA.L SRAM_StageClearScore_Hi
-    STA.W WRAM7E_Score_Hi
+    STA.W WRAM_Score_Hi
     LDA.L SNI_ReceivedItemID
     CMP.W #$010C
     BCS .ComboScoring
         LDA.W #$0041
-        STA.L WRAM7E_NewSoundEvent
+        STA.L WRAM_NewSoundEvent
         LDA.L SNI_ReceivedItemID
         SEC
         SBC.W #$00FF
         PHA
         JSL.L CODE_82E2D6_JSR
-        LDA.W WRAM7E_Score_Lo
+        LDA.W WRAM_Score_Lo
         STA.L SRAM_StageClearScore_Lo
-        LDA.W WRAM7E_Score_Hi
+        LDA.W WRAM_Score_Hi
         STA.L SRAM_StageClearScore_Hi
-        LDA.W WRAM7E_CheckpointScore_Lo
-        STA.W WRAM7E_Score_Lo
-        LDA.W WRAM7E_CheckpointScore_Hi
-        STA.W WRAM7E_Score_Hi
+        LDA.W WRAM_CheckpointScore_Lo
+        STA.W WRAM_Score_Lo
+        LDA.W WRAM_CheckpointScore_Hi
+        STA.W WRAM_Score_Hi
         PLA
         JSL.L CODE_82E2D6_JSR
         BRA .End
     .ComboScoring:
         LDA.W #$002B
-        STA.L WRAM7E_NewSoundEvent
+        STA.L WRAM_NewSoundEvent
         LDA.L SNI_ReceivedItemID
         SEC
         SBC.W #$0108
         PHA
         JSL.L CODE_82E1AF_JSR
-        LDA.W WRAM7E_Score_Lo
+        LDA.W WRAM_Score_Lo
         STA.L SRAM_StageClearScore_Lo
-        LDA.W WRAM7E_Score_Hi
+        LDA.W WRAM_Score_Hi
         STA.L SRAM_StageClearScore_Hi
-        LDA.W WRAM7E_CheckpointScore_Lo
-        STA.W WRAM7E_Score_Lo
-        LDA.W WRAM7E_CheckpointScore_Hi
-        STA.W WRAM7E_Score_Hi
+        LDA.W WRAM_CheckpointScore_Lo
+        STA.W WRAM_Score_Lo
+        LDA.W WRAM_CheckpointScore_Hi
+        STA.W WRAM_Score_Hi
         PLA
         JSL.L CODE_82E1AF_JSR
     .End:
@@ -1212,11 +1217,11 @@ SUB_ArchipelagoAddScore:
 ; Action Code 0008: ORwise set ID to arg in two places and play unique sound
 SUB_ArchipelagoMarkWon:
     LDA.W #$0013
-    STA.L WRAM7E_NewSoundEvent
+    STA.L WRAM_NewSoundEvent
     BRL SUB_ArchipelagoORValue
 ; Action Code 000A: play sound effect and set ID to arg
 SUB_ArchipelagoWriteShockPanels:
-    LDA.W WRAM7E_GameState
+    LDA.W WRAM_GameState
     CMP.W #$0003
     BCC .MenuPopSound
         LDA.W #$0005
@@ -1224,7 +1229,7 @@ SUB_ArchipelagoWriteShockPanels:
     .MenuPopSound:
         LDA.W #$0025
     .PlaySound:
-    STA.L WRAM7E_NewSoundEvent
+    STA.L WRAM_NewSoundEvent
 ; Action Code 0009: set ID to arg
 SUB_ArchipelagoWrite16BitValue:
     LDA.L SNI_ReceivedItemID
@@ -1264,7 +1269,7 @@ incsrc "Versus.asm"
 
 CODE_FilterMusicEvent:
     PHX
-    LDA.W WRAM7E_GameState
+    LDA.W WRAM_GameState
     CMP.W #$0011
     BEQ .Play
     LDA.L DATA8_MusicEventFilter
@@ -1277,12 +1282,12 @@ CODE_FilterMusicEvent:
     BIT.W #%10
     BEQ .Play
     .MenuIsFineButNotStage:
-        LDA.W WRAM7E_GameState
+        LDA.W WRAM_GameState
         CMP.W #$0003
         BCC .Play
         BRA .DoNotPlay
     .StageIsFineButNotMenu:
-        LDA.W WRAM7E_GameState
+        LDA.W WRAM_GameState
         CMP.W #$0003
         BCS .Play
         ;BRA .DoNotPlay
@@ -1292,7 +1297,7 @@ CODE_FilterMusicEvent:
         JML.L CODE_8091E2
     .Play:
         PLX
-        STX.W WRAM80_APU0QueueA
+        STX.W WRAM_APU0QueueA
         JML.L CODE_8091E2
 
 CODE_OnStackCreated:
@@ -1308,13 +1313,13 @@ CODE_NewShockPanelLogic:
     BEQ .StageClear
     CMP.W #$0003
     BEQ .Puzzle
-    LDA.W WRAM7E_PlayersIndicator
+    LDA.W WRAM_PlayersIndicator
     BNE .Versus
     .Endless:
         TDC ; Disable shock panels
         RTL
     .StageClear:
-        LDA.L WRAM7E_StageClearSpecialIndex
+        LDA.L WRAM_StageClearSpecialIndex
         BNE .SpecialStage
         .NormalStage:
             ; TODO: Implement algorithm for incrementing pending shock panels
@@ -1337,7 +1342,7 @@ CODE_NewShockPanelLogic:
                 LSR A
                 LSR A
                 INC A
-                STA.W WRAM7E_P1PendingShockPanels
+                STA.W WRAM_P1PendingShockPanels
                 LDA.W #$0004 ; Enable shock panels
                 RTL
         .SpecialStage:
@@ -1354,7 +1359,7 @@ CODE_NewShockPanelLogic:
 
 CODE_OnShockPanelCreated:
     print "On shock panel created at ",pc
-    LDA.W WRAM7E_PlayersIndicator
+    LDA.W WRAM_PlayersIndicator
     BNE .Vs
     .Solo:
         LDA.L WRAM_ShockPanelsInBoard
@@ -1365,14 +1370,14 @@ CODE_OnShockPanelCreated:
         LDA.W $0354
         BNE .P2
         .P1:
-            LDA.W WRAM82_P1PendingShockPanels
+            LDA.W WRAM_P1PendingShockPanels
             BEQ +
-                DEC.W WRAM82_P1PendingShockPanels
+                DEC.W WRAM_P1PendingShockPanels
           + RTL
         .P2:
-            LDA.W WRAM82_P2PendingShockPanels
+            LDA.W WRAM_P2PendingShockPanels
             BEQ +
-                DEC.W WRAM82_P2PendingShockPanels
+                DEC.W WRAM_P2PendingShockPanels
           + RTL
 
 CODE_CustomLevelDisplay:
@@ -1380,7 +1385,7 @@ CODE_CustomLevelDisplay:
     BEQ .LevelDisplay
     LDA.L WRAM_ModeIndex
     BEQ .ArchipelagoDisplay
-    LDA.W WRAM7E_StageClearSpecialIndex
+    LDA.W WRAM_StageClearSpecialIndex
     BEQ .ArchipelagoDisplay
     .LevelDisplay:
         ; Display Level
@@ -1656,7 +1661,7 @@ SUB_DisplayShockPanelsRemainingBig:
         BCS .StillNeedToSpawnMore
         .AllPanelsPresent:
             STA.B $00
-            LDA.W WRAM7E_GameFrames
+            LDA.W WRAM_GameFrames
             AND.W #$0010
             XBA
             ORA.W #$0010
@@ -1739,7 +1744,7 @@ SUB_DisplayShockPanelsRemainingSmall:
         BCS .StillNeedToSpawnMore
         .AllPanelsPresent:
             STA.B $00
-            LDA.W WRAM7E_GameFrames
+            LDA.W WRAM_GameFrames
             INC A
             INC A
             AND.W #$0010
