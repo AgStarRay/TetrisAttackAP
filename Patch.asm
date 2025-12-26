@@ -776,7 +776,6 @@ CODE_NewMainMenuState9:
         ;STA.W WRAM_GameState
         ;TDC
         ;STA.W WRAM_GameSubstate
-        ;TDC
         ;STA.W WRAM_VsMenuSubstate
     .SkipSpecialCheck:
 
