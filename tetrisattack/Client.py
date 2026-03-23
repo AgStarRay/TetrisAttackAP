@@ -90,7 +90,7 @@ class TetrisAttackSNIClient(SNIClient):
         if rom_prefix is None:
             return False
         rom_hash = await snes_read(ctx, TETRISATTACK_ROMHASH_START, ROMHASH_SIZE)
-        expected_hash = f'{format(MASKED_VERSION, 'X')}'
+        expected_hash = f'{format(MASKED_VERSION, "X")}'
         hash_bytes = bytearray(expected_hash, 'utf8')
         if rom_hash is None:
             snes_logger.error(f'Failed to read ROM name hash')

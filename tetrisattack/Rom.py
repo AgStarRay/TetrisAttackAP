@@ -392,7 +392,7 @@ def patch_rom(world: "TetrisAttackWorld", patch: TATKProcedurePatch) -> None:
     from Utils import __version__
     rom_prefix = bytearray(f'ATK{__version__.replace(".", "")[0:3]}', 'utf8')
     patch.name = bytearray(
-        f'{format(MASKED_VERSION, 'X')}|{world.player}{world.multiworld.seed:11}\0',
+        f'{format(MASKED_VERSION, "X")}|{world.player}{world.multiworld.seed:11}\0',
         'utf8')[:21]
     patch.name.extend([0] * (21 - len(patch.name)))
     patch.write_bytes(0x007FB0, rom_prefix)
