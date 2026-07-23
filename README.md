@@ -53,6 +53,7 @@ Locations will be marked with the Archipelago symbol if they have not been colle
 ### Stage Clear
 - **0, 5, or 6** Round Clears, obtained after clearing the fifth stage of each round; note that all 5 Stage Clears are needed locally even if their checks have been collected
 - **0 or 30** Stage Clears, obtained after getting under the clear line
+- **0 to 30** Special Stage triggers, distributed evenly across Round or Stage Clears; in vanilla there's only 1, after Round 3 Clear
 - Victory condition: deplete Bowser's HP in the Last Stage; Last Stage is typically accessible after the Round 6 Clear
 - If ! Panels are added, a check is sent every X panels cleared **1 to 100 times**
   - Two more panels will appear to guarantee it being possible; if the panels per check is 1 or 2, it is possible to skip logic
@@ -62,7 +63,7 @@ Locations will be marked with the Archipelago symbol if they have not been colle
 - **0 or 6** Round Clears, obtained after clearing all 10 puzzles of a level; note that all 10 clears are needed locally even if their checks have been collected
 - **0 or 6** Extra Round Clears, obtained after clearing all 10 puzzles of an extra level
 - **0 to 120** Puzzle Clears and Extra Puzzle clears, obtained after clearing the board completely of all panels
-- Victory condition: Level 6 Clear and/or Extra Level 6 Clear, based on mode
+- Victory condition: Round 6 Clear and/or Extra Round 6 Clear, based on mode
 
 ### Vs.
 - **10 to 12** Stage clears, obtained after defeating the opponent in a Vs. stage
@@ -70,6 +71,9 @@ Locations will be marked with the Archipelago symbol if they have not been colle
 - **8** Free characters, obtained after defeating the opponent in one of the first 8 Vs. stages
 - All Friends Normal Again, obtained after clearing the first 8 Vs. stages which would normally allow access to Mt. Wickedness; note that all 8 stage clears are needed locally even if their checks have been collected or you have all 8 friends already
 - Victory condition: beat the last stage, typically according to vanilla clear condition such as Stage 10 in Easy and Stage 12 in Hard
+
+# Deathlink
+Deathlink occurs if you hit the top of your board or you run out of moves in Puzzle mode. The game has a unique message for each situation.
 
 # Contributing
 If you want to contribute to the development, there is a bit of setup involved.
