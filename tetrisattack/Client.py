@@ -7,12 +7,11 @@ from struct import pack
 
 from NetUtils import ClientStatus, color
 from worlds.AutoSNIClient import SNIClient
-from worlds.tetrisattack import item_table, location_table
-from worlds.tetrisattack.Items import progressive_items
-from worlds.tetrisattack.Locations import CLEARED_SHOCK_PANELS, VS_CLEARS_START
-from worlds.tetrisattack.Rom import GOALS_POSITION, DEATHLINKHINT, MASKED_VERSION, SRAM_FACTOR, SCSHOCKPANELS_PER_CHECK, \
+from . import item_table, location_table
+from .Items import progressive_items
+from .Rom import GOALS_POSITION, DEATHLINKHINT, MASKED_VERSION, SRAM_FACTOR, SCSHOCKPANELS_PER_CHECK, \
     WORLD_VERSION, STRING_DATA, STRING_DATA_SIZE
-from worlds.tetrisattack.data.Constants import VS_CLEARS_END
+from .data.Constants import VS_CLEARS_END, CLEARED_SHOCK_PANELS, VS_CLEARS_START
 
 if typing.TYPE_CHECKING:
     from SNIClient import SNIContext
