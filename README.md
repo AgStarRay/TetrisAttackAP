@@ -1,5 +1,5 @@
 # Tetris Attack AP
-Archipelago mod for Tetris Attack. Requires the USA version of the Super Nintendo ROM to play.
+Archipelago mod for Tetris Attack. Requires the USA version of the Super NES ROM to play.
 
 # Install
 These instructions assume that you have Archipelago installed already ([install](https://archipelago.gg/tutorial/Archipelago/setup_en)).

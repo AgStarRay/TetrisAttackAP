@@ -351,3 +351,28 @@ CODE_ConditionalImFreeMsg:
     .SkipUnlockingCharacter:
     REP #$20
     RTL
+
+CODE_CustomOverworldHeaderIndex:
+    STA.B $00
+    LDA.L WRAM_VsDifficulty-$7E0000
+    TAX
+    LDA.L DATA8_VsCustomLastStages,X
+    AND.W #$00FF
+    CMP.B $00
+    BNE .UseOriginalValue
+    .SayLastStage:
+        LDA.W #$000B
+        RTL
+    .UseOriginalValue:
+        LDA.B $00
+        RTL
+
+CODE_VsCustomFadeToWhite:
+    LDA.L DATA8_VsCustomLastStages,X
+    AND.W #$00FF
+    CMP.W WRAM_CharacterIndex2
+    BNE .WaitForPlayer
+    .FadeToWhite:
+        JML.L CODE_87FBF7
+    .WaitForPlayer:
+        JML.L CODE_87FC09

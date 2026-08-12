@@ -156,12 +156,17 @@ def get_locations(world: Optional["TetrisAttackWorld"]) -> Dict[str, LocationDat
         for s in range(1, 6):
             if not stage_clear_has_special(r, s, special_stage_trap_count):
                 excluded_locations.add(f"Stage Clear {r}-{s} Special")
-    if world.options.versus_goal == VersusGoal.option_easy:
+    if ((world.options.versus_goal == VersusGoal.option_easy
+         or world.options.versus_goal == VersusGoal.option_no_vs)
+            and not world.options.versus_easy_bowser):
         excluded_locations.add(versus_stage_names[10])
         excluded_locations.add(f"{versus_clear_prefixes[10]} Normal Clear")
         excluded_locations.add(f"{versus_clear_prefixes[10]} Hard Clear")
         excluded_locations.add(f"{versus_clear_prefixes[10]} V.Hard Clear")
-    if world.options.versus_goal == VersusGoal.option_easy or world.options.versus_goal == VersusGoal.option_normal:
+    if ((world.options.versus_goal == VersusGoal.option_easy
+         or world.options.versus_goal == VersusGoal.option_normal
+         or world.options.versus_goal == VersusGoal.option_no_vs)
+            and not world.options.versus_easy_bowser):
         excluded_locations.add(versus_stage_names[11])
         excluded_locations.add(f"{versus_clear_prefixes[11]} Normal Clear")
         excluded_locations.add(f"{versus_clear_prefixes[11]} Hard Clear")

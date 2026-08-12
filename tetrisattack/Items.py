@@ -246,10 +246,10 @@ def get_items(world: Optional["TetrisAttackWorld"]) -> Dict[str, ItemData]:
                 special_stage_trap_count)
         else:
             del new_items["Stage Clear Special Stage Trap"]
-    if "Vs. Progressive Stage Unlock" in new_items:
+    if "Vs. Progressive Stage Unlock" in new_items and not world.options.versus_easy_bowser:
         old_item = new_items["Vs. Progressive Stage Unlock"]
         unlock_count = old_item.amount
-        if world.options.versus_goal == VersusGoal.option_easy:
+        if world.options.versus_goal == VersusGoal.option_easy or world.options.versus_goal == VersusGoal.option_no_vs:
             unlock_count -= 2
         elif world.options.versus_goal == VersusGoal.option_normal:
             unlock_count -= 1

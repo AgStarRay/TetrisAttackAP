@@ -37,3 +37,19 @@ class TestVersusEasyProgressive(TetrisAttackTestBase):
         "versus_goal": VersusGoal.option_easy,
         "starter_pack": StarterPack.option_vs_two_stages
     }
+
+class TestVersusEasyBowser(TetrisAttackTestBase):
+    options = {
+        "stage_clear_goal": False,
+        "puzzle_goal": PuzzleGoal.option_no_puzzle,
+        "versus_goal": VersusGoal.option_easy,
+        "starter_pack": StarterPack.option_vs_two_stages,
+        "versus_mode": VersusMode.option_goal_difficulty,
+        "versus_easy_bowser": True
+    }
+
+    def test_stage_12(self) -> None:
+        locations = ["LAST STAGE - Bowser!!!!"]
+        items = [["Vs. Last Stage Unlock",
+                  "Mt. Wickedness Gate"]]
+        self.assertAccessDependency(locations, items, only_check_listed=True)

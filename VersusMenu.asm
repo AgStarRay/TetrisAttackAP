@@ -12,7 +12,8 @@ CODE_VsSelection:
             LDA.L WRAM_VsStageNumber
             DEC A
             BPL .StageNumberNotNegative
-                LDA.W #$000B
+                LDA.L DATA8_VsCustomLastStages+3
+                AND.W #$00FF
             .StageNumberNotNegative:
             STA.L WRAM_VsStageNumber
             BRA .DisplayStageState
@@ -45,13 +46,17 @@ CODE_VsSelection:
     RTL
 
 SUB_KeepVsStageInRange:
-    LDA.L WRAM_VsStageNumber
-    CMP.W #$000C
-    BCC .StageNumberInRange
-        TDC
+    LDA.L DATA8_VsCustomLastStages+3
+    AND.W #$00FF
+    CMP.L WRAM_VsStageNumber
+    BCC .StageNumberOutOfRange
     .StageNumberInRange:
-    STA.L WRAM_VsStageNumber
-    RTS
+        LDA.L WRAM_VsStageNumber
+        RTS
+    .StageNumberOutOfRange:
+        TDC
+        STA.L WRAM_VsStageNumber
+        RTS
 
 SUB_VsDisplayStageSelector:
     LDY.W WRAM_OAMAppendAddr
