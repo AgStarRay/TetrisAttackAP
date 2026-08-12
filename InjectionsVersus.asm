@@ -78,3 +78,12 @@ JMP.W CODE_8B8EFB
 ; Make the "I'm free" message conditional
 org $8BA79B
 JML.L CODE_ConditionalImFreeMsg
+
+; Change when to say "LAST STAGE" in the overworld
+org $8BC3E9
+JSL.L CODE_CustomOverworldHeaderIndex
+BRA CODE_8BC411
+
+; Change when to fade to white
+org $87FBD8
+JML.L CODE_VsCustomFadeToWhite

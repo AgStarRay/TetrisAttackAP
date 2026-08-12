@@ -425,7 +425,7 @@ CODE_SRAMHealthCheck:
         DEX
         DEX
     BPL CODE_ClearSRAMWorkArea
-    LDA.W #$FFFF
+    LDA.W #$FFFE
     STA.L SNI_ReceivedItemNumber
     PLA
     PLP
@@ -963,6 +963,9 @@ SUB_PrintSNIState:
     BEQ .Connected
     INC A
     CMP.L SNI_ReceiveCheck
+    BEQ .ConnectedNoPrint
+    INC A
+    CMP.L SNI_ReceiveCheck
     BEQ .Connecting
     LDA.B WRAM_GameFrames
     CMP.W #30
@@ -978,6 +981,8 @@ SUB_PrintSNIState:
         LDA.W #$001B
         LDX.W #DATA16_SNIStateConnecting
         BRA .Print
+    .ConnectedNoPrint:
+        RTS
     .Connected:
         LDA.L SNI_ReceivedItemNumber
         JSL.L CODE_16BitHexToDec
@@ -1106,7 +1111,7 @@ CODE_ScanIncomingArchipelagoItems:
                 DEC A
                 STA.L SNI_ReceivedItemNumber
             .DontUpdate:
-            LDA.W #300
+            LDA.W #240
         .WaitingOnSNI:
         STA.L WRAM_SNIFramesBeforePoll
         PLP

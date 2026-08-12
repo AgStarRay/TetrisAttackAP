@@ -48,7 +48,7 @@ SRAM_SNI_MESSAGE = SRAM_START + 0x0412
 STAGECLEARLASTSTAGE_COMPLETED = SRAM_START + location_table["Stage Clear Last Stage Clear"].code
 PUZZLEL6_COMPLETED = SRAM_START + location_table["Puzzle Round 6 Clear"].code
 EXTRAPUZZLEL6_COMPLETED = SRAM_START + location_table["Extra Puzzle Round 6 Clear"].code
-STAGECLEARSHOCKPANEL_ID = SRAM_START + item_table["Stage Clear ! Panels"].code
+STAGECLEARSHOCKPANEL_ID = SRAM_START + item_table["Stage Clear ! Panel Bundle"].code
 VSSTAGES_COMPLETED = SRAM_START + 0x225
 SRAM_AP_REGION_OFFSET = 0x020
 SRAM_AP_REGION_END = pow(2, SRAM_FACTOR)
@@ -445,7 +445,7 @@ def get_progressive_item_addr_range(item_id) -> (int, int):
 
 
 def evaluate_stage_clear(location, loc_id):
-    if "Stage Clear ! Panels" in location:
+    if "Stage Clear ! Panels Check" in location:
         return None
     if "Stage Clear Round " in location:
         return f"SC Round {location[18]}"
