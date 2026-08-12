@@ -216,7 +216,7 @@ def shock_panels_lead_to_traps(options: "TetrisAttackOptions"):
 
 
 def stage_clear_can_clear_shock_panels(world: "TetrisAttackWorld", state, group_count: int):
-    if not state.has("Stage Clear ! Panels", world.player, group_count):
+    if not state.has("Stage Clear ! Panel Bundle", world.player, group_count):
         return False
     for s in range(1, 6):
         for r in range(1, 7):

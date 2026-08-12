@@ -19,8 +19,8 @@ from .Options import StarterPack, StageClearMode, PuzzleMode, PuzzleGoal, Versus
 if TYPE_CHECKING:
     from . import TetrisAttackWorld
 
-WORLD_VERSION: str = "0.4.2"
-MASKED_VERSION: int = 5
+WORLD_VERSION: str = "0.4.3"
+MASKED_VERSION: int = 6
 
 USAHASH = "44bb94606356f1c0965e12bbc50866b3"
 

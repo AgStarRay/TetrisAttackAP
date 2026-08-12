@@ -80,7 +80,7 @@ for n in range(0, 12):
                                                                               VS_CLEARS_START + n + (5 << SRAM_FACTOR))
 for n in range(1, 101):
     loc_id = CLEARED_SHOCK_PANELS + n * (1 << SRAM_FACTOR)
-    location_table[f"Stage Clear ! Panels #{n}"] = LocationData("Stage Clear", SHOCK_PANEL, loc_id)
+    location_table[f"Stage Clear ! Panels Check #{n}"] = LocationData("Stage Clear", SHOCK_PANEL, loc_id)
 for n in range(0, 12):
     # TODO: Simplify the above table to loops
     pass
@@ -168,7 +168,7 @@ def get_locations(world: Optional["TetrisAttackWorld"]) -> Dict[str, LocationDat
         excluded_locations.add(f"{versus_clear_prefixes[11]} V.Hard Clear")
     excluded_locations.add(f"{versus_clear_prefixes[11]} Normal Clear")
     for i in range(shock_panel_group_count + 1, 101):
-        excluded_locations.add(f"Stage Clear ! Panels #{i}")
+        excluded_locations.add(f"Stage Clear ! Panels Check #{i}")
 
     new_locations = dict(
         filter(lambda item: item[1].location_class in included_classes and item[0] not in excluded_locations,
