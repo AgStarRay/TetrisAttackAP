@@ -12,7 +12,7 @@ There, after generating a multiworld ([click here for instructions on generation
 
 After a compatible emulator opens (such as Bizhawk), load the Connector.lua script from Archipelago/SNI/lua to connect to the SNI client (Tools > Lua Console; File > Open Session > select the Connector.lua file). For different emulators, instructions may vary.
 
-Source code was written for 0.6.4, but it was also tested on 0.6.3, doesn't seem to work prior to 0.6.3. To avoid compatibility issues, try to have your Archipelago version match the one that the seed was generated with, especially if yours is older.
+Source code was written for 0.6.8, but it was also tested on 0.6.7, doesn't seem to work prior to 0.6.3. To avoid compatibility issues, try to have your Archipelago version match the one that the seed was generated with, especially if yours is older.
 
 # Items
 In the menu, the number of items you have received is shown at the bottom next to "CONNECTED!".
