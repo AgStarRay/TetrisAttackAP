@@ -10,7 +10,7 @@ After the custom apworld is installed, click Generate Template Options in Archip
 
 There, after generating a multiworld ([click here for instructions on generation and hosting](https://archipelago.gg/tutorial/Archipelago/setup_en)), click Open Patch in the Archipelago launcher and select the .aptatk file (as well as the original ROM if it's the first time). You can also run the .aptatk file itself, but make sure it is extracted from the output zip file first (otherwise the game will take place in a temp folder you won't easily find).
 
-After a compatible emulator opens (such as Bizhawk), load the Connector.lua script from Archipelago/SNI/lua to connect to the SNI client (Tools > Lua Console; File > Open Session > select the Connector.lua file). For different emulators, instructions may vary.
+After a compatible emulator opens (such as Bizhawk), load the Connector.lua script from Archipelago/SNI/lua to connect to the SNI client (Tools > Lua Console; Script > Open Script > select the Connector.lua file). For different emulators, instructions may vary.
 
 Source code was written for 0.6.8, but it was also tested on 0.6.7, doesn't seem to work prior to 0.6.3. To avoid compatibility issues, try to have your Archipelago version match the one that the seed was generated with, especially if yours is older.
 
