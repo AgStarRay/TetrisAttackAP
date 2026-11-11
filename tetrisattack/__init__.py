@@ -8,7 +8,7 @@ import typing
 import threading
 from BaseClasses import Location, Item, MultiWorld
 from Options import OptionError
-from worlds.AutoWorld import World
+from worlds.AutoWorld import World, WebWorld
 from .Logic import stage_clear_included, stage_clear_round_gates_included, stage_clear_progressive_unlocks_included, \
     stage_clear_individual_unlocks_included, get_starting_puzzle_level, puzzle_mode_included, versus_mode_included
 from .Options import TetrisAttackOptions, StarterPack, PuzzleGoal, PuzzleInclusion, \
@@ -35,6 +35,8 @@ class TetrisAttackSettings(settings.Group):
 
     rom_file: RomFile = RomFile("Tetris Attack (USA) (En,Ja).sfc")
 
+class TetrisAttackWebWorld(WebWorld):
+  tutorials = []
 
 class TetrisAttackWorld(World):
     """Tetris Attack is a frantic rising blocks puzzle game. Match 3 or more same-colored panels in a row horizontally or vertically to clear them.
@@ -46,6 +48,7 @@ class TetrisAttackWorld(World):
     options_dataclass = TetrisAttackOptions  # options the player can set
     options: TetrisAttackOptions  # typing hints for option results
     settings: typing.ClassVar[TetrisAttackSettings]  # will be automatically assigned from type hint
+    web = TetrisAttackWebWorld()
     topology_present = True  # show path to required location checks in spoiler
 
     item_name_to_id = {item: item_table[item].code for item in item_table if item_table[item].code is not None}
